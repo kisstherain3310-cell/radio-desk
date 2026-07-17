@@ -385,40 +385,28 @@ section[data-testid="stSidebar"] div[data-testid="stCheckbox"] label p {
   100% { background: rgba(110, 159, 255, 0.05); }
 }
 
-.news-meta {
+.news-flags {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  margin-bottom: 0.38rem;
+  gap: 0.3rem;
+  margin-bottom: 0.28rem;
   flex-wrap: wrap;
-  min-height: 1.15rem;
 }
 
 .news-time {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.68rem;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 400;
   color: var(--faint);
   white-space: nowrap;
-}
-
-.source-badge {
-  display: inline-block;
-  font-size: 0.62rem;
-  font-weight: 600;
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  background: var(--accent-dim);
-  color: var(--accent);
-  border: 1px solid var(--accent-border);
 }
 
 .pill {
   display: inline-block;
   font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  padding: 0.08rem 0.34rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.06rem 0.32rem;
   border-radius: 3px;
   line-height: 1.3;
 }
@@ -429,147 +417,113 @@ section[data-testid="stSidebar"] div[data-testid="stCheckbox"] label p {
   border: 1px solid rgba(110, 159, 255, 0.3);
 }
 
-.pill-hot {
-  background: rgba(232, 184, 74, 0.14);
-  color: #e8b84a;
-  border: 1px solid rgba(232, 184, 74, 0.3);
-}
-
-.pill-hot-plus {
-  background: rgba(232, 120, 74, 0.18);
-  color: #ff9b6a;
-  border: 1px solid rgba(232, 120, 74, 0.35);
-}
-
+/* HOT / HOT+ / SIGNAL — 동일 accent */
+.pill-hot,
+.pill-hot-plus,
 .pill-signal {
-  background: rgba(160, 140, 220, 0.14);
-  color: #b8a8e8;
-  border: 1px solid rgba(160, 140, 220, 0.3);
+  background: rgba(232, 184, 74, 0.14);
+  color: var(--hot);
+  border: 1px solid rgba(232, 184, 74, 0.32);
 }
 
-.match-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.28rem;
-  margin-top: 0.35rem;
-}
-
-.match-chip {
-  font-size: 0.58rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  padding: 0.06rem 0.32rem;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--muted);
-  border: 1px solid var(--line);
-}
-
-.trust-row {
+.meta-line {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.45rem 0.7rem;
-  margin-top: 0.4rem;
-  padding-top: 0.35rem;
-  border-top: 1px solid var(--line-soft);
-  font-size: 0.62rem;
-  color: var(--faint);
-}
-
-.trust-row .trust-label {
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: #6a7384;
-}
-
-.trust-row a {
-  color: var(--muted) !important;
-  text-decoration: none;
-}
-
-.trust-row a:hover {
-  color: var(--accent) !important;
-  text-decoration: underline;
-}
-
-.origin-tag {
-  font-size: 0.56rem;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  color: #6a7384;
-  margin-right: 0.25rem;
-}
-
-.lang-inline {
-  display: inline-flex;
   gap: 0.28rem;
-}
-
-.lang-tag {
-  font-size: 0.58rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  margin-top: 0.38rem;
+  font-size: 11px;
+  font-weight: 400;
   color: var(--faint);
-  opacity: 0.85;
+  line-height: 1.35;
 }
 
-.source-link {
-  font-size: 0.64rem;
+.meta-line .meta-source {
   font-weight: 500;
+  color: var(--muted);
+}
+
+.meta-line a {
   color: var(--faint) !important;
   text-decoration: none;
-  margin-left: auto;
-  opacity: 0.8;
 }
 
-.source-link:hover {
+.meta-line a:hover {
   color: var(--accent) !important;
   text-decoration: underline;
+}
+
+.meta-line .meta-dot {
+  color: #3d4450;
+  user-select: none;
 }
 
 .headline-stack {
   display: flex;
   flex-direction: column;
-  gap: 0.18rem;
+  gap: 0.2rem;
 }
 
 .headline-en,
 .headline-en:link,
 .headline-en:visited {
-  font-size: 0.9rem;
+  font-size: 0.98rem;
   font-weight: 600;
   color: var(--text);
-  line-height: 1.4;
+  line-height: 1.38;
   text-decoration: none;
 }
 
 .headline-en:hover {
-  color: var(--accent);
+  color: #f3f5f9;
   text-decoration: underline;
   text-underline-offset: 0.18em;
 }
 
 .headline-ko {
-  font-size: 0.8rem;
+  font-size: 0.84rem;
   font-weight: 400;
-  color: var(--text-soft);
+  color: var(--muted);
   line-height: 1.4;
-  opacity: 0.88;
 }
 
 .headline-en-only {
-  font-size: 0.9rem;
+  font-size: 0.98rem;
   font-weight: 600;
   color: var(--text);
-  line-height: 1.4;
+  line-height: 1.38;
 }
 
 mark.hl {
-  background: rgba(232, 184, 74, 0.28);
-  color: inherit;
-  padding: 0 0.12em;
-  border-radius: 2px;
+  background: transparent;
+  color: #c9d4ef;
+  font-weight: inherit;
+  padding: 0;
+  border-radius: 0;
+}
+
+.status-banner {
+  font-size: 0.74rem;
+  font-weight: 400;
+  color: var(--muted);
+  margin: 0 0 0.35rem 0;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  line-height: 1.4;
+}
+
+.status-banner.is-warn {
+  color: #d4b896;
+  border-color: rgba(232, 184, 74, 0.28);
+  background: rgba(232, 184, 74, 0.06);
+}
+
+.status-banner .status-rss {
+  color: var(--faint);
+  font-size: 0.68rem;
+  margin-top: 0.15rem;
 }
 
 /* 피드 2열만 구분선 (헤더 햄버거 행 제외) */
@@ -937,14 +891,22 @@ def _parse_watchlist(raw: str) -> list[str]:
     return [p.strip() for p in parts if p.strip()]
 
 
+def _term_boundary_pattern(term: str) -> re.Pattern[str]:
+    """Word-ish boundary so ETH does not match inside ETF."""
+    escaped = re.escape(term.strip())
+    return re.compile(
+        rf"(?<![A-Za-z0-9_]){escaped}(?![A-Za-z0-9_])",
+        re.IGNORECASE,
+    )
+
+
 def _matched_terms(text: str, terms: list[str]) -> list[str]:
-    hay = text.lower()
     hits: list[str] = []
     for term in terms:
         t = term.strip()
         if not t:
             continue
-        if t.lower() in hay and t not in hits:
+        if _term_boundary_pattern(t).search(text) and t not in hits:
             hits.append(t)
     return hits
 
@@ -1021,19 +983,26 @@ def _highlight_html(text: str, terms: list[str]) -> str:
     escaped = html.escape(text)
     if not terms:
         return escaped
-    # Longer terms first to avoid partial overlaps
     ordered = sorted({t for t in terms if t}, key=len, reverse=True)
     for term in ordered:
-        pattern = re.compile(re.escape(html.escape(term)), re.IGNORECASE)
-        escaped = pattern.sub(lambda m: f'<mark class="hl">{m.group(0)}</mark>', escaped)
+        pat = _term_boundary_pattern(html.escape(term))
+        escaped = pat.sub(lambda m: f'<mark class="hl">{m.group(0)}</mark>', escaped)
     return escaped
 
 
+def _query_tokens(query: str) -> list[str]:
+    return [t for t in re.split(r"[\s,]+", query.strip()) if t]
+
+
 def _matches_query(item: dict[str, Any], translated: str, query: str) -> bool:
-    if not query:
+    if not query or not query.strip():
         return True
-    q = query.lower().strip()
-    return q in f"{item.get('title', '')} {translated}".lower()
+    blob = f"{item.get('title', '')} {translated}".lower()
+    tokens = _query_tokens(query)
+    if not tokens:
+        return True
+    # OR: any token matches (substring on the combined blob)
+    return any(tok.lower() in blob for tok in tokens)
 
 
 def inject_css() -> None:
@@ -1085,19 +1054,18 @@ def prepare_rows(
     translate_limit: int = 6,
     translate_only_hot_new: bool = True,
 ) -> list[dict[str, Any]]:
-    """Build feed rows, then batch-translate only HOT/NEW (quota-saving)."""
+    """소스 필터 → 후보 구성 → (번역) → 검색 → 정렬 → limit."""
     rows: list[dict[str, Any]] = []
     seen: set[str] = st.session_state.seen_ids
     fetched_at = fetched_at or datetime.now().strftime("%H:%M:%S")
+    # 검색이 번역 이후에 걸리므로, 쿼리 있을 때 후보 풀을 더 넓게
+    pool_cap = max(limit * 5, 100) if query.strip() else max(limit * 3, limit)
 
     for item in news:
         if not enabled_sources.get(item["source"], True):
             continue
 
         title = item.get("title", "")
-        if query and not _matches_query(item, title, query):
-            continue
-
         heat = _heat_info(title, watchlist, use_signal_keywords)
         item_id = item.get("id") or _item_id(item)
         is_new = item_id not in seen if st.session_state.seeded_seen else False
@@ -1105,7 +1073,7 @@ def prepare_rows(
         rows.append(
             {
                 "item": item,
-                "translated": title,  # placeholder; filled after batch
+                "translated": title,
                 "is_new": is_new,
                 "is_hot": heat["is_hot"],
                 "heat_tier": heat["tier"],
@@ -1117,26 +1085,25 @@ def prepare_rows(
                 "fetched_at": fetched_at,
             }
         )
-        if len(rows) >= max(limit * 3, limit):
+        if len(rows) >= pool_cap:
             break
 
-    if sort_hot_first:
-        rows.sort(
-            key=lambda r: (
-                r["heat_score"],
-                1 if r["is_new"] else 0,
-                r["item"].get("published_iso", ""),
-            ),
-            reverse=True,
+    def _sort_key(r: dict[str, Any]) -> tuple[Any, ...]:
+        return (
+            r["heat_score"],
+            1 if r["is_new"] else 0,
+            r["item"].get("published_iso", ""),
         )
 
-    rows = rows[:limit]
+    if sort_hot_first:
+        rows.sort(key=_sort_key, reverse=True)
 
-    # --- 할당량 절약: HOT/NEW만, 그리고 배치 1회 ---
+    # --- 할당량 절약: HOT/NEW만, 배치 1회 (검색 전 상위 풀에서) ---
+    translate_pool = rows[: max(limit * 2, limit)]
     if enable_translation and API_KEY:
         budget = max(0, int(translate_limit))
         candidates: list[str] = []
-        for row in rows:
+        for row in translate_pool:
             if len(candidates) >= budget:
                 break
             title = row["item"].get("title", "")
@@ -1147,19 +1114,15 @@ def prepare_rows(
             if title not in candidates:
                 candidates.append(title)
 
-        mapping = translate_titles_batch(
-            candidates, category, enabled=True
-        )
+        mapping = translate_titles_batch(candidates, category, enabled=True)
         for row in rows:
             title = row["item"].get("title", "")
             if title in mapping:
                 row["translated"] = mapping[title]
             else:
-                # 미번역 항목은 원문 유지 (스텁 남발 방지)
                 cached = _memory_get(category, title)
                 row["translated"] = cached if cached else title
 
-            # 번역 반영 후 heat 하이라이트 재계산(한글 매칭 포함)
             blob = f"{title} {row['translated']}"
             heat = _heat_info(blob, watchlist, use_signal_keywords)
             row["is_hot"] = heat["is_hot"] or row["is_hot"]
@@ -1168,8 +1131,23 @@ def prepare_rows(
             row["hits"] = heat["highlight_terms"] or row["hits"]
             row["watch_hits"] = heat["watch_hits"] or row["watch_hits"]
             row["signal_hits"] = heat["signal_hits"] or row["signal_hits"]
+    else:
+        for row in rows:
+            title = row["item"].get("title", "")
+            row["translated"] = title
 
-    return rows
+    # 검색: 원문 + 번역문 (토큰 OR)
+    if query.strip():
+        rows = [
+            r
+            for r in rows
+            if _matches_query(r["item"], r.get("translated", ""), query)
+        ]
+
+    if sort_hot_first:
+        rows.sort(key=_sort_key, reverse=True)
+
+    return rows[:limit]
 
 
 def _linked_or_span(text_html: str, link: str, has_link: bool, css_class: str) -> str:
@@ -1185,7 +1163,6 @@ def _news_card_html(row: dict[str, Any], mode: DisplayMode, _watchlist: list[str
     translated = row["translated"]
     time_str = _format_time(item["published_iso"])
     rel_time = _relative_time(item["published_iso"])
-    badge = f'<span class="source-badge">{html.escape(item["source"])}</span>'
     link_raw = item.get("link", "") or ""
     link = html.escape(link_raw, quote=True)
     has_link = bool(link_raw)
@@ -1198,84 +1175,53 @@ def _news_card_html(row: dict[str, Any], mode: DisplayMode, _watchlist: list[str
         en_html = html.escape(item.get("title", ""))
         ko_html = html.escape(translated)
 
-    lang_tags: list[str] = []
-    if mode in ("both", "en"):
-        lang_tags.append('<span class="lang-tag">EN</span>')
-    if mode in ("both", "ko"):
-        lang_tags.append('<span class="lang-tag">KO</span>')
-    lang_html = (
-        f'<span class="lang-inline">{"".join(lang_tags)}</span>' if lang_tags else ""
-    )
-    link_html = (
-        f'<a class="source-link" href="{link}" target="_blank" rel="noopener">Source</a>'
-        if has_link
-        else ""
-    )
-
     pills = ""
     if row["is_new"]:
         pills += '<span class="pill pill-new">NEW</span>'
     tier = row.get("heat_tier")
     if tier == "hot+":
         pills += (
-            f'<span class="pill pill-hot-plus">HOT+ · {row.get("heat_score", 0)}</span>'
+            f'<span class="pill pill-hot-plus">HOT+{row.get("heat_score", 0)}</span>'
         )
     elif tier == "hot":
-        pills += f'<span class="pill pill-hot">HOT · {row.get("heat_score", 0)}</span>'
+        pills += f'<span class="pill pill-hot">HOT·{row.get("heat_score", 0)}</span>'
     if row.get("signal_hits") and not row.get("watch_hits"):
         pills += '<span class="pill pill-signal">SIGNAL</span>'
+    flags = f'<div class="news-flags">{pills}</div>' if pills else ""
 
     stack: list[str] = ['<div class="headline-stack">']
     raw_title = item.get("title", "")
     same_as_origin = translated.strip() == raw_title.strip()
     if mode == "both":
         stack.append(
-            '<div>'
-            f'<span class="origin-tag">ORIGIN</span>'
-            f"{_linked_or_span(en_html, link, has_link, 'headline-en')}"
-            "</div>"
+            f"<div>{_linked_or_span(en_html, link, has_link, 'headline-en')}</div>"
         )
-        # 번역 OFF/동일 원문이면 KO 중복 행 생략
         if not same_as_origin:
             stack.append(f'<div class="headline-ko">{ko_html}</div>')
     elif mode == "en":
         stack.append(
-            '<div>'
-            f'<span class="origin-tag">ORIGIN</span>'
-            f"{_linked_or_span(en_html, link, has_link, 'headline-en')}"
-            "</div>"
+            f"<div>{_linked_or_span(en_html, link, has_link, 'headline-en')}</div>"
         )
     else:
         stack.append(_linked_or_span(ko_html, link, has_link, "headline-en"))
     stack.append("</div>")
 
-    chips = ""
-    chip_terms = list(
-        dict.fromkeys((row.get("watch_hits") or []) + (row.get("signal_hits") or []))
-    )[:6]
-    if chip_terms:
-        chips = (
-            '<div class="match-chips">'
-            + "".join(
-                f'<span class="match-chip">{html.escape(t)}</span>' for t in chip_terms
-            )
-            + "</div>"
-        )
-
-    domain_html = html.escape(domain) if domain else "RSS"
-    fetched = html.escape(str(row.get("fetched_at", "—")))
-    trust = (
-        f'<div class="trust-row">'
-        f'<span><span class="trust-label">PUB</span> {html.escape(rel_time)} · [{time_str}]</span>'
-        f'<span><span class="trust-label">VIA</span> RSS · {html.escape(item["source"])}</span>'
-        f'<span><span class="trust-label">HOST</span> '
-        + (
-            f'<a href="{link}" target="_blank" rel="noopener">{domain_html}</a>'
-            if has_link
-            else domain_html
-        )
-        + "</span>"
-        f'<span><span class="trust-label">SYNC</span> {fetched}</span>'
+    domain_html = html.escape(domain) if domain else "rss"
+    source_html = html.escape(item["source"])
+    host_html = (
+        f'<a href="{link}" target="_blank" rel="noopener">{domain_html}</a>'
+        if has_link
+        else domain_html
+    )
+    meta = (
+        f'<div class="meta-line">'
+        f'<span class="news-time">{html.escape(time_str)}</span>'
+        f'<span class="meta-dot">·</span>'
+        f"<span>{html.escape(rel_time)}</span>"
+        f'<span class="meta-dot">·</span>'
+        f'<span class="meta-source">{source_html}</span>'
+        f'<span class="meta-dot">·</span>'
+        f"{host_html}"
         f"</div>"
     )
 
@@ -1287,13 +1233,9 @@ def _news_card_html(row: dict[str, Any], mode: DisplayMode, _watchlist: list[str
 
     return (
         f'<div class="{" ".join(classes)}">'
-        f'<div class="news-meta">'
-        f'<span class="news-time">[{time_str}]</span>'
-        f"{badge}{pills}{lang_html}{link_html}"
-        f"</div>"
+        f"{flags}"
         f"{''.join(stack)}"
-        f"{chips}"
-        f"{trust}"
+        f"{meta}"
         f"</div>"
     )
 
@@ -1315,6 +1257,7 @@ def render_feed_panel(
     rows: list[dict[str, Any]],
     mode: DisplayMode,
     watchlist: list[str],
+    sort_hot_first: bool = True,
 ) -> None:
     st.markdown(
         f'<div class="panel-head {css_class}">'
@@ -1325,9 +1268,11 @@ def render_feed_panel(
     )
     new_count = sum(1 for r in rows if r["is_new"])
     hot_count = sum(1 for r in rows if r["is_hot"])
+    sort_label = "HOT순" if sort_hot_first else "시간순"
     st.markdown(
         f'<div class="feed-meta">{len(rows)} results'
         f' · {new_count} new · {hot_count} hot'
+        f' · {sort_label}'
         f' · sync {datetime.now().strftime("%H:%M:%S")}</div>',
         unsafe_allow_html=True,
     )
@@ -1381,10 +1326,27 @@ def _update_seen_and_alerts(
 # Sidebar UI
 # ---------------------------------------------------------------------------
 
+def _translation_status_lines(
+    enable_translation: bool,
+    translate_limit: int,
+    translate_only_hot_new: bool,
+) -> tuple[str, bool]:
+    """Return (main status text, is_warn)."""
+    if not API_KEY:
+        return "번역 불가 · `.env`에 GEMINI_API_KEY가 없습니다", True
+    if st.session_state.get("translate_circuit_open"):
+        return "번역 일시중지 · API 할당량/오류 (사이드바에서 재시도)", True
+    if not enable_translation:
+        return "번역 OFF · 원문만 표시", False
+    scope = "HOT/NEW" if translate_only_hot_new else "표시 항목"
+    return f"번역 ON · {scope} 최대 {translate_limit}건/컬럼", False
+
+
 def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     settings = st.session_state.settings
 
-    st.markdown('<div class="sidebar-label">Search</div>', unsafe_allow_html=True)
+    # 1) 검색
+    st.markdown('<div class="sidebar-label">검색</div>', unsafe_allow_html=True)
     query = st.text_input(
         "키워드 필터",
         placeholder="btc, nvidia, 실적…",
@@ -1392,12 +1354,13 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
         key="search_query",
     )
     st.markdown(
-        '<div class="sidebar-hint">원문 · 번역문 키워드 필터</div>',
+        '<div class="sidebar-hint">원문·번역문 검색 · 콤마/공백은 OR</div>',
         unsafe_allow_html=True,
     )
 
+    # 2) 표시 모드
     st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-label">Display</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-label">표시</div>', unsafe_allow_html=True)
     mode_label = st.radio(
         "표시 모드",
         options=["원문 + 번역", "원문만", "번역만"],
@@ -1413,12 +1376,15 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     _limit_opts = [20, 40, 80]
     _cur_limit = settings.get("result_limit", 40)
     settings["result_limit"] = st.selectbox(
-        "결과 수",
+        "결과 수 (컬럼당)",
         options=_limit_opts,
         index=_limit_opts.index(_cur_limit) if _cur_limit in _limit_opts else 1,
     )
     st.markdown(
-        '<div class="sidebar-hint">번역 ON/OFF는 메인 화면 상단 스위치에서 제어합니다.</div>',
+        '<div class="sidebar-hint">'
+        "표시 모드 = 카드에 무엇을 보여줄지 · "
+        "번역 스위치(메인 상단) = 실제로 Gemini 호출할지"
+        "</div>",
         unsafe_allow_html=True,
     )
     if settings.get("enable_translation"):
@@ -1434,21 +1400,45 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
             value=int(settings.get("translate_limit", 6)),
             key="translate_limit_slider",
         )
-        st.markdown(
-            '<div class="sidebar-hint">'
-            "여러 제목을 1회 API 호출로 번역 · 결과는 세션 캐시 · 실패 2회 시 차단"
-            "</div>",
-            unsafe_allow_html=True,
-        )
         calls = int(st.session_state.get("translate_api_calls", 0))
         batch_n = int(st.session_state.get("translate_last_batch_size", 0))
         st.caption(f"이번 세션 API 호출: {calls}회 · 마지막 배치: {batch_n}건")
     else:
-        st.caption("현재 번역 OFF · 메인 상단에서 켤 수 있습니다.")
+        st.caption("현재 번역 OFF · 메인 상단 스위치로 켤 수 있습니다.")
 
+    # 3) 워치리스트
     st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-label">Sources</div>', unsafe_allow_html=True)
-    st.caption("Feed = 표시 · Alert = 소리 알림 대상")
+    st.markdown('<div class="sidebar-label">워치리스트</div>', unsafe_allow_html=True)
+    watch_raw = st.text_area(
+        "워치리스트",
+        value=", ".join(settings.get("watchlist", [])),
+        height=78,
+        label_visibility="collapsed",
+        placeholder="BTC, ETH, ETF, NVDA",
+        key="watchlist_raw",
+    )
+    settings["watchlist"] = _parse_watchlist(watch_raw)
+    st.markdown(
+        '<div class="sidebar-hint">'
+        "HOT 점수 = 워치×2 + 시그널 · 단어 단위 매칭 (ETH≠ETF)"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+    settings["use_signal_keywords"] = st.checkbox(
+        "시장 시그널 키워드 포함 (ETF, SEC, 실적…)",
+        value=settings.get("use_signal_keywords", True),
+        key="use_signal_keywords",
+    )
+    settings["sort_hot_first"] = st.checkbox(
+        "HOT 점수 높은 순으로 정렬",
+        value=settings.get("sort_hot_first", True),
+        key="sort_hot_first",
+    )
+
+    # 4) 소스
+    st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-label">소스</div>', unsafe_allow_html=True)
+    st.caption("체크 = 표시 · 🔔 = 소리 알림 대상")
 
     st.markdown("**Crypto**")
     for src in [f["source"] for f in CRYPTO_FEEDS]:
@@ -1484,34 +1474,9 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
                 help=f"{src} 알림",
             )
 
+    # 5) 알림
     st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-label">Watchlist</div>', unsafe_allow_html=True)
-    watch_raw = st.text_area(
-        "워치리스트",
-        value=", ".join(settings.get("watchlist", [])),
-        height=78,
-        label_visibility="collapsed",
-        placeholder="BTC, ETH, ETF, NVDA",
-        key="watchlist_raw",
-    )
-    settings["watchlist"] = _parse_watchlist(watch_raw)
-    st.markdown(
-        '<div class="sidebar-hint">워치리스트 매칭 시 HOT + 하이라이트</div>',
-        unsafe_allow_html=True,
-    )
-    settings["use_signal_keywords"] = st.checkbox(
-        "시장 시그널 키워드 포함 (ETF, SEC, 실적…)",
-        value=settings.get("use_signal_keywords", True),
-        key="use_signal_keywords",
-    )
-    settings["sort_hot_first"] = st.checkbox(
-        "HOT 점수 높은 순으로 정렬",
-        value=settings.get("sort_hot_first", True),
-        key="sort_hot_first",
-    )
-
-    st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-label">Alerts</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-label">알림</div>', unsafe_allow_html=True)
     settings["alerts_enabled"] = st.toggle(
         "소리 알림 사용",
         value=settings.get("alerts_enabled", False),
@@ -1533,8 +1498,9 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
             unsafe_allow_html=True,
         )
 
+    # 6) 저장
     st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-label">Data · Import / Export</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-label">설정 저장</div>', unsafe_allow_html=True)
 
     export_payload = json.dumps(settings, ensure_ascii=False, indent=2)
     st.download_button(
@@ -1588,16 +1554,14 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
         st.success("저장됨 → data/user_settings.json")
 
     st.markdown(
-        '<div class="sidebar-hint">'
-        "Refresh · 60s · RSS · PUB/HOST/SYNC trust row"
-        "</div>",
+        '<div class="sidebar-hint">자동 새로고침 60초 · RSS 공개 피드</div>',
         unsafe_allow_html=True,
     )
     if not API_KEY:
         st.warning("`.env`의 `GEMINI_API_KEY`가 비어 있습니다.")
     else:
         st.markdown(
-            f'<div class="sidebar-hint">Translation · {GEMINI_MODEL}</div>',
+            f'<div class="sidebar-hint">번역 모델 · {GEMINI_MODEL}</div>',
             unsafe_allow_html=True,
         )
     err = st.session_state.get("translate_last_error")
@@ -1809,13 +1773,19 @@ def main() -> None:
     translate_limit = int(settings.get("translate_limit", 6))
     translate_only_hot_new = bool(settings.get("translate_only_hot_new", True))
 
-    st.caption(
-        f"RSS 수집 완료 · Crypto {len(crypto_news)} · Stocks {len(stock_news)} · "
-        + (
-            f"번역 ON · HOT/NEW 배치(최대 {translate_limit}/컬럼)"
-            if enable_translation
-            else "번역 OFF(빠른 원문 표시)"
-        )
+    status_text, status_warn = _translation_status_lines(
+        enable_translation,
+        translate_limit,
+        translate_only_hot_new,
+    )
+    warn_cls = " is-warn" if status_warn else ""
+    st.markdown(
+        f'<div class="status-banner{warn_cls}">'
+        f"<div>{html.escape(status_text)}</div>"
+        f'<div class="status-rss">'
+        f"RSS 수집 · Crypto {len(crypto_news)} · Stocks {len(stock_news)}"
+        f"</div></div>",
+        unsafe_allow_html=True,
     )
 
     crypto_rows = prepare_rows(
@@ -1870,6 +1840,7 @@ def main() -> None:
             rows=crypto_rows,
             mode=mode,
             watchlist=watchlist,
+            sort_hot_first=bool(settings.get("sort_hot_first", True)),
         )
 
     with col_stocks:
@@ -1883,6 +1854,7 @@ def main() -> None:
             rows=stock_rows,
             mode=mode,
             watchlist=watchlist,
+            sort_hot_first=bool(settings.get("sort_hot_first", True)),
         )
 
 
