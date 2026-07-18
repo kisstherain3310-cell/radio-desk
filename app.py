@@ -561,8 +561,49 @@ div[data-testid="stHorizontalBlock"]:has(.panel-head) > div:nth-child(2) {
 }
 
 /* ---- Reader page (prototype) ---- */
-.ad-slot {
-  min-height: 280px;
+.home-ad-banner {
+  margin: 0.55rem 0 0.75rem;
+}
+.home-ad-banner .ad-slot {
+  min-height: 72px;
+}
+.signals-teaser {
+  border: 1px solid rgba(232, 184, 74, 0.28);
+  background: linear-gradient(
+    135deg,
+    rgba(232, 184, 74, 0.08),
+    rgba(14, 18, 28, 0.4)
+  );
+  border-radius: 8px;
+  padding: 1rem 1.15rem;
+  margin-top: 0.25rem;
+}
+.signals-teaser.is-pro {
+  border-color: rgba(110, 159, 255, 0.35);
+  background: linear-gradient(
+    135deg,
+    rgba(110, 159, 255, 0.1),
+    rgba(14, 18, 28, 0.4)
+  );
+}
+.signals-kicker {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 0.35rem;
+}
+.signals-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-bottom: 0.35rem;
+}
+.signals-body {
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.ad-slot {  min-height: 280px;
   border: 1px dashed rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.02);
@@ -699,8 +740,8 @@ def _ensure_source_keys(settings: dict[str, Any]) -> dict[str, Any]:
     return settings
 
 
-# 세션당 무료 번역 맛보기 한도 (비로그인)
-FREE_TRANSLATE_SESSION_LIMIT = 10
+# 매체 RSS 번역은 무료. 남용 방지용 숨은 상한(배너에 표시하지 않음)
+SOFT_TRANSLATE_DAILY_CAP = 2000
 
 
 def init_session_settings() -> None:
@@ -723,69 +764,49 @@ def init_session_settings() -> None:
         st.session_state.translate_api_calls = 0
     if "article_index" not in st.session_state:
         st.session_state.article_index = {}
-    if "translate_quota_limit" not in st.session_state:
-        st.session_state.translate_quota_limit = FREE_TRANSLATE_SESSION_LIMIT
-    if "translate_quota_used" not in st.session_state:
-        st.session_state.translate_quota_used = 0
+    _ensure_soft_translate_day()
 
 
 def _is_logged_in() -> bool:
     return auth_quota.get_current_user() is not None
 
 
-def _translate_quota_limit() -> int:
-    user = auth_quota.get_current_user()
-    if user:
-        return auth_quota.get_daily_limit(user)
-    return int(
-        st.session_state.get("translate_quota_limit", FREE_TRANSLATE_SESSION_LIMIT)
-    )
+def _show_ads() -> bool:
+    """Pro는 광고 없음."""
+    return not auth_quota.is_pro()
 
 
-def _translate_quota_used() -> int:
-    if auth_quota.get_current_user():
-        return auth_quota.get_daily_used()
-    return int(st.session_state.get("translate_quota_used", 0))
+def _ensure_soft_translate_day() -> None:
+    today = datetime.now(KST).date().isoformat()
+    if st.session_state.get("soft_translate_date") != today:
+        st.session_state["soft_translate_date"] = today
+        st.session_state["soft_translate_used"] = 0
 
 
-def _translate_quota_remaining() -> int:
-    user = auth_quota.get_current_user()
-    if user:
-        return auth_quota.get_daily_remaining(user)
-    return max(0, _translate_quota_limit() - _translate_quota_used())
+def _translate_soft_remaining() -> int:
+    """숨은 일일 soft cap 잔여 (UI에 노출하지 않음)."""
+    _ensure_soft_translate_day()
+    used = int(st.session_state.get("soft_translate_used", 0))
+    return max(0, SOFT_TRANSLATE_DAILY_CAP - used)
 
 
-def _translate_quota_consume(n: int) -> None:
+def _translate_soft_consume(n: int) -> None:
     n = max(0, int(n))
     if n <= 0:
         return
-    if auth_quota.is_pro():
-        return  # Pro: 차감 없음
-    if auth_quota.get_current_user():
-        auth_quota.consume_daily(n)
-        return
-    st.session_state["translate_quota_used"] = min(
-        _translate_quota_limit(),
-        _translate_quota_used() + n,
+    _ensure_soft_translate_day()
+    st.session_state["soft_translate_used"] = min(
+        SOFT_TRANSLATE_DAILY_CAP,
+        int(st.session_state.get("soft_translate_used", 0)) + n,
     )
 
 
-def _translate_quota_reset() -> None:
-    """비로그인 세션 쿼터만 초기화 (테스트용)."""
-    st.session_state["translate_quota_used"] = 0
-
-
-def _quota_status_label() -> str:
-    """배너/사이드바용 잔여 문구."""
-    rem = _translate_quota_remaining()
-    lim = _translate_quota_limit()
+def _status_product_label() -> str:
     if auth_quota.is_pro():
-        return "번역 무제한 (Pro)"
-    if _is_logged_in():
-        return f"오늘 번역 잔여 {rem}/{lim} (KST)"
+        return f"Pro · 광고 없음 · X·시그널 우선 ({billing.PRO_PRICE_LABEL})"
     return (
-        f"세션 맛보기 잔여 {rem}/{lim} · 로그인 시 하루 "
-        f"{auth_quota.FREE_TRANSLATE_DAILY_LIMIT}건"
+        f"매체 뉴스·번역 무료 · Pro는 X·시그널+광고제거 "
+        f"({billing.PRO_PRICE_LABEL})"
     )
 
 
@@ -846,13 +867,33 @@ def _resolve_article(article_id: str) -> dict[str, Any] | None:
     return None
 
 
-def _ad_slot_html(side: str) -> str:
+def _ad_slot_html(side: str, *, compact: bool = False) -> str:
+    note = (
+        "프로토타입 슬롯 · 배포 시 광고 코드 연결"
+        if compact
+        else "프로토타입 슬롯<br/>배포 시 광고 코드 연결"
+    )
     return (
-        f'<div class="ad-slot" aria-label="광고 영역">'
+        f'<div class="ad-slot" data-ad-slot="{html.escape(side)}" '
+        f'aria-label="광고 영역">'
         f'<div class="ad-label">Ad · {html.escape(side)}</div>'
-        f'<div class="ad-note">프로토타입 슬롯<br/>배포 시 광고 코드 연결</div>'
+        f'<div class="ad-note">{note}</div>'
         f"</div>"
     )
+
+
+def _render_home_ad(slot_id: str, label: str) -> None:
+    if not _show_ads():
+        return
+    wrap = "home-ad-banner" if slot_id == "home-top" else ""
+    html_block = _ad_slot_html(label, compact=(slot_id != "home-top"))
+    if wrap:
+        st.markdown(
+            f'<div class="{wrap}">{html_block}</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(html_block, unsafe_allow_html=True)
 
 
 def render_reader_page(article: dict[str, Any]) -> None:
@@ -866,6 +907,7 @@ def render_reader_page(article: dict[str, Any]) -> None:
     rel = _relative_time(pub_iso)
     abs_time = _format_time(pub_iso)
     same = translated.strip() == title.strip()
+    show_ads = _show_ads()
 
     pills = ""
     if article.get("is_new"):
@@ -878,7 +920,8 @@ def render_reader_page(article: dict[str, Any]) -> None:
 
     left, center, right = st.columns([1, 2.4, 1], gap="medium")
     with left:
-        st.markdown(_ad_slot_html("Left"), unsafe_allow_html=True)
+        if show_ads:
+            st.markdown(_ad_slot_html("Left"), unsafe_allow_html=True)
     with center:
         st.markdown(
             '<div class="reader-kicker">라디오 데스크 · 읽기</div>',
@@ -933,7 +976,8 @@ def render_reader_page(article: dict[str, Any]) -> None:
             unsafe_allow_html=True,
         )
     with right:
-        st.markdown(_ad_slot_html("Right"), unsafe_allow_html=True)
+        if show_ads:
+            st.markdown(_ad_slot_html("Right"), unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1240,15 +1284,14 @@ def translate_titles_batch(
 ) -> dict[str, str]:
     """
     HOT/NEW 후보를 메모리 캐시 + 배치 1회로 번역.
-    잔여 쿼터(세션 또는 일일)만큼만 신규 API 호출. 캐시 히트는 차감 없음.
-    반환: {원문: 번역문}
+    매체 RSS 번역은 무료. 세션 메모리·서버 캐시 히트는 API/soft-cap 미차감.
+    숨은 일일 soft cap(SOFT_TRANSLATE_DAILY_CAP)만 적용.
     """
     result: dict[str, str] = {}
     if not enabled or not API_KEY or not titles:
         return result
 
     if st.session_state.get("translate_circuit_open"):
-        # 회로 차단 시에도 캐시는 제공
         for t in titles:
             t = (t or "").strip()
             if not t:
@@ -1258,7 +1301,7 @@ def translate_titles_batch(
                 result[t] = cached
         return result
 
-    remaining = _translate_quota_remaining()
+    remaining = _translate_soft_remaining()
     unique: list[str] = []
     for t in titles:
         t = (t or "").strip()
@@ -1270,7 +1313,6 @@ def translate_titles_batch(
         elif t not in unique:
             if len(unique) < remaining:
                 unique.append(t)
-            # 잔여 없으면 신규 API 후보에 넣지 않음 (원문 유지)
 
     if not unique:
         return result
@@ -1283,7 +1325,8 @@ def translate_titles_batch(
         for src, dst in zip(unique, translated):
             result[src] = dst
             _memory_set(category, src, dst)
-        _translate_quota_consume(len(unique))
+        # 서버 캐시 히트여도 동일 경로 — soft cap만 세션 단위로 기록
+        _translate_soft_consume(len(unique))
         st.session_state["translate_api_calls"] = (
             int(st.session_state.get("translate_api_calls", 0)) + 1
         )
@@ -1518,7 +1561,7 @@ def prepare_rows(
     if sort_hot_first:
         rows.sort(key=_sort_key, reverse=True)
 
-    # --- HOT/NEW 배치 번역 + 세션 맛보기 쿼터 ---
+    # --- HOT/NEW 배치 번역 (매체 RSS 무료 + 숨은 soft cap) ---
     translate_pool = rows[: max(limit * 2, limit)]
     if enable_translation and API_KEY:
         # 컬럼당 상한 (캐시 조회 포함 후보 수). 실제 API는 세션 잔여로 제한됨.
@@ -1696,7 +1739,10 @@ def render_feed_panel(
     watchlist: list[str],
     sort_hot_first: bool = True,
     category: Category = "crypto",
+    ad_label: str | None = None,
 ) -> None:
+    if ad_label:
+        _render_home_ad(f"col-{css_class}", ad_label)
     st.markdown(
         f'<div class="panel-head {css_class}">'
         f'<div class="panel-title {css_class}">{title}</div>'
@@ -1726,6 +1772,48 @@ def render_feed_panel(
         _register_article(r, category)
     cards = "".join(_news_card_html(r, mode, watchlist) for r in rows)
     st.markdown(cards, unsafe_allow_html=True)
+
+
+def _render_signals_teaser() -> None:
+    """Phase 2 X·시그널 자리 — Pro 업셀 / 잠금 프리뷰."""
+    pro = auth_quota.is_pro()
+    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+    if pro:
+        st.markdown(
+            '<div class="signals-teaser is-pro">'
+            "<div class=\"signals-kicker\">SIGNALS · Pro</div>"
+            "<div class=\"signals-title\">X 인플루언서·시그널 속보</div>"
+            "<div class=\"signals-body\">"
+            "출시 예정 피드를 우선 제공합니다. 준비되는 대로 이 영역에 표시됩니다."
+            "</div></div>",
+            unsafe_allow_html=True,
+        )
+        return
+    st.markdown(
+        '<div class="signals-teaser">'
+        "<div class=\"signals-kicker\">SIGNALS · Locked</div>"
+        "<div class=\"signals-title\">X 인플루언서·시그널 속보</div>"
+        "<div class=\"signals-body\">"
+        f"검증된 매체 RSS는 무료입니다. 소셜·시그널 레이더는 Pro "
+        f"({html.escape(billing.PRO_PRICE_LABEL)}) — "
+        "지금 구독 시 광고 제거 + 시그널 우선 제공."
+        "</div></div>",
+        unsafe_allow_html=True,
+    )
+    if _is_logged_in() and billing.stripe_configured():
+        user = auth_quota.get_current_user()
+        if user and st.button(
+            f"Pro로 잠금 해제 · {billing.PRO_PRICE_LABEL}",
+            key="btn_signals_checkout",
+            use_container_width=False,
+        ):
+            url = billing.create_checkout_session(
+                user["id"], user.get("email") or ""
+            )
+            if url:
+                st.link_button("결제 페이지로 이동", url)
+    elif not _is_logged_in() and auth_quota.auth_configured():
+        st.caption("Google 로그인 후 Pro를 구독할 수 있습니다. (사이드바)")
 
 
 def _update_seen_and_alerts(
@@ -1775,6 +1863,7 @@ def _translation_status_lines(
     translate_only_hot_new: bool,
 ) -> tuple[str, bool]:
     """Return (main status text, is_warn)."""
+    product = _status_product_label()
     if not API_KEY:
         return (
             "번역 불가 · API 키가 없습니다 (로컬 .env / 배포 Streamlit Secrets)",
@@ -1784,7 +1873,6 @@ def _translation_status_lines(
         err = str(st.session_state.get("translate_last_error") or "").strip()
         brief = ""
         if err:
-            # 한 줄로 짧게
             brief = err.replace("\n", " ")
             if len(brief) > 80:
                 brief = brief[:77] + "…"
@@ -1794,32 +1882,14 @@ def _translation_status_lines(
             True,
         )
 
-    remaining = _translate_quota_remaining()
-    taste = _quota_status_label()
-    logged_in = _is_logged_in()
-    pro = auth_quota.is_pro()
-
-    if enable_translation and remaining <= 0 and not pro:
-        if logged_in:
-            return (
-                f"오늘 무료 번역 소진 · 원문만 표시 · "
-                f"Pro({billing.PRO_PRICE_LABEL}) 구독 시 무제한 · {taste}",
-                True,
-            )
-        return (
-            f"세션 맛보기 소진 · Google 로그인하면 하루 "
-            f"{auth_quota.FREE_TRANSLATE_DAILY_LIMIT}건 · {taste}",
-            True,
-        )
-
     err = st.session_state.get("translate_last_error")
     if enable_translation and err and not st.session_state.get("translate_circuit_open"):
-        return f"번역 ON · 최근 오류 있음 · {taste}", True
+        return f"번역 ON · 최근 오류 있음 · {product}", True
     if not enable_translation:
-        return f"번역 OFF · 원문만 표시 · {taste}", False
+        return f"번역 OFF · 원문만 표시 · {product}", False
     scope = "HOT/NEW" if translate_only_hot_new else "표시 항목"
     return (
-        f"번역 ON · {scope} 최대 {translate_limit}건/컬럼 · {taste}",
+        f"번역 ON · {scope} 최대 {translate_limit}건/컬럼 · {product}",
         False,
     )
 
@@ -1853,7 +1923,10 @@ def _rss_status_line(health: dict[str, Any], is_stale: bool) -> str:
 def _render_billing_sidebar(user: dict[str, Any]) -> None:
     """로그인 사용자용 Stripe Checkout / Portal."""
     if st.session_state.pop("billing_just_activated", None):
-        st.success("Pro 구독이 활성화되었습니다. 번역 무제한을 이용할 수 있습니다.")
+        st.success(
+            "Pro가 활성화되었습니다. 광고가 제거되며, "
+            "X·시그널 속보를 우선 제공합니다."
+        )
 
     if not billing.stripe_configured():
         st.caption(
@@ -1863,7 +1936,9 @@ def _render_billing_sidebar(user: dict[str, Any]) -> None:
         return
 
     if auth_quota.is_pro(user):
-        st.caption(f"Pro 구독 중 · 번역 무제한 ({billing.PRO_PRICE_LABEL})")
+        st.caption(
+            f"Pro 구독 중 · 광고 없음 · X·시그널 우선 ({billing.PRO_PRICE_LABEL})"
+        )
         customer_id = (user.get("stripe_customer_id") or "").strip()
         if not customer_id:
             billed = billing.get_profile_billing(user["id"])
@@ -1874,10 +1949,6 @@ def _render_billing_sidebar(user: dict[str, Any]) -> None:
             if st.button("구독 관리", use_container_width=True, key="btn_portal"):
                 portal = billing.create_portal_session(customer_id)
                 if portal:
-                    st.markdown(
-                        f'<meta http-equiv="refresh" content="0;url={portal}">',
-                        unsafe_allow_html=True,
-                    )
                     st.link_button("포털로 이동", portal, use_container_width=True)
                 else:
                     st.warning(
@@ -1887,7 +1958,10 @@ def _render_billing_sidebar(user: dict[str, Any]) -> None:
         else:
             st.caption("고객 ID가 없습니다. 잠시 후 새로고침해 주세요.")
     else:
-        st.caption(f"무료 · 하루 {auth_quota.FREE_TRANSLATE_DAILY_LIMIT}건")
+        st.caption("무료 · 매체 RSS·번역 · 홈 광고 표시")
+        st.caption(
+            "Pro · 출시 예정 X·시그널 우선 제공 + 지금 바로 광고 제거"
+        )
         if st.button(
             f"Pro 구독 · {billing.PRO_PRICE_LABEL}",
             use_container_width=True,
@@ -1898,10 +1972,6 @@ def _render_billing_sidebar(user: dict[str, Any]) -> None:
                 user["id"], user.get("email") or ""
             )
             if url:
-                st.markdown(
-                    f'<meta http-equiv="refresh" content="0;url={url}">',
-                    unsafe_allow_html=True,
-                )
                 st.link_button("결제 페이지로 이동", url, use_container_width=True)
             else:
                 st.warning(
@@ -1918,36 +1988,22 @@ def _render_auth_sidebar() -> None:
     if not auth_quota.auth_configured():
         st.caption(
             "Google 로그인 미설정 · Secrets에 SUPABASE_URL / "
-            "SUPABASE_ANON_KEY / APP_URL 을 넣으면 활성화됩니다."
+            "SUPABASE_ANON_KEY / APP_URL 을 넣으면 Pro 결제가 활성화됩니다."
         )
-        st.caption(
-            f"지금은 세션 맛보기 {FREE_TRANSLATE_SESSION_LIMIT}건만 사용합니다."
-        )
+        st.caption("매체 뉴스·번역은 로그인 없이 무료입니다.")
         return
 
     user = auth_quota.get_current_user()
     if user:
         email = user.get("email") or user.get("id", "")
         st.caption(f"로그인 · {email}")
-        if auth_quota.is_pro(user):
-            st.caption("오늘 잔여: 무제한 (Pro)")
-        else:
-            rem = _translate_quota_remaining()
-            lim = _translate_quota_limit()
-            st.caption(f"오늘 잔여: {rem}/{lim}건 (KST)")
-            if rem <= 0:
-                st.info(
-                    f"오늘 무료 번역 소진 · Pro({billing.PRO_PRICE_LABEL}) 구독 시 무제한"
-                )
+        st.caption("매체 뉴스·번역 · 무료")
         _render_billing_sidebar(user)
         if st.button("로그아웃", use_container_width=True, key="btn_logout"):
             auth_quota.logout()
             st.rerun()
     else:
-        st.caption(
-            f"비로그인 · 세션 맛보기 {FREE_TRANSLATE_SESSION_LIMIT}건 · "
-            f"로그인 시 하루 {auth_quota.FREE_TRANSLATE_DAILY_LIMIT}건"
-        )
+        st.caption("비로그인 · 매체 뉴스·번역 무료")
         oauth_url = auth_quota.get_google_oauth_url()
         if oauth_url:
             st.link_button(
@@ -1956,15 +2012,15 @@ def _render_auth_sidebar() -> None:
                 use_container_width=True,
                 type="primary",
             )
+            st.caption(
+                f"로그인 후 Pro({billing.PRO_PRICE_LABEL}) · "
+                "X·시그널 우선 + 광고 제거"
+            )
         else:
             st.warning("로그인 URL을 만들지 못했습니다. Secrets·Supabase 설정을 확인하세요.")
         err = st.session_state.get("auth_last_error")
         if err:
             st.caption(f"로그인 오류: {err}")
-        if billing.stripe_configured():
-            st.caption(
-                f"번역 무제한은 로그인 후 Pro({billing.PRO_PRICE_LABEL}) 구독"
-            )
 
 
 def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
@@ -2012,23 +2068,12 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     st.markdown(
         '<div class="sidebar-hint">'
         "표시 모드 = 카드에 무엇을 보여줄지 · "
-        "번역 스위치(메인 상단) = 실제로 Gemini 호출할지 · "
-        "캐시 히트는 쿼터 차감 없음"
+        "번역 스위치(메인 상단) = Gemini 호출 · "
+        "매체 RSS 번역은 무료"
         "</div>",
         unsafe_allow_html=True,
     )
-    st.caption(_quota_status_label())
-    q_rem = _translate_quota_remaining()
-    if q_rem <= 0 and not auth_quota.is_pro():
-        if _is_logged_in():
-            st.info(
-                f"오늘 무료 번역 소진 · Pro({billing.PRO_PRICE_LABEL}) 구독 시 무제한"
-            )
-        else:
-            st.info(
-                f"세션 맛보기 소진 · Google 로그인하면 하루 "
-                f"{auth_quota.FREE_TRANSLATE_DAILY_LIMIT}건"
-            )
+    st.caption(_status_product_label())
     if settings.get("enable_translation"):
         settings["translate_only_hot_new"] = st.checkbox(
             "HOT / NEW 만 번역 (권장)",
@@ -2041,21 +2086,13 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
             max_value=12,
             value=int(settings.get("translate_limit", 6)),
             key="translate_limit_slider",
-            help="실제 API는 잔여 쿼터와 min으로 제한됩니다.",
+            help="한 번에 번역할 후보 개수(컬럼당).",
         )
         calls = int(st.session_state.get("translate_api_calls", 0))
         batch_n = int(st.session_state.get("translate_last_batch_size", 0))
         st.caption(f"이번 세션 API 호출: {calls}회 · 마지막 배치: {batch_n}건")
     else:
         st.caption("현재 번역 OFF · 메인 상단 스위치로 켤 수 있습니다.")
-    if not _is_logged_in():
-        if st.button("맛보기 쿼터 초기화 (테스트)", use_container_width=True):
-            _translate_quota_reset()
-            st.rerun()
-    elif not auth_quota.is_pro():
-        st.caption("로그인 중 · 오늘 사용량은 Supabase에 저장됩니다.")
-    else:
-        st.caption("Pro · 번역 쿼터 차감 없음(사실상 무제한)")
 
     # 3) 워치리스트
     st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
@@ -2489,7 +2526,6 @@ def main() -> None:
         translate_only_hot_new=translate_only_hot_new,
     )
 
-    # 번역 차감 반영 후 배너 (맛보기 잔여가 이번 새로고침 결과를 포함)
     status_text, status_warn = _translation_status_lines(
         enable_translation,
         translate_limit,
@@ -2508,6 +2544,7 @@ def main() -> None:
         f"</div>",
         unsafe_allow_html=True,
     )
+    _render_home_ad("home-top", "Home")
 
     _update_seen_and_alerts(crypto_rows + stock_rows, settings)
 
@@ -2526,6 +2563,7 @@ def main() -> None:
             watchlist=watchlist,
             sort_hot_first=bool(settings.get("sort_hot_first", True)),
             category="crypto",
+            ad_label="Crypto",
         )
 
     with col_stocks:
@@ -2541,7 +2579,10 @@ def main() -> None:
             watchlist=watchlist,
             sort_hot_first=bool(settings.get("sort_hot_first", True)),
             category="stocks",
+            ad_label="Stocks",
         )
+
+    _render_signals_teaser()
 
 
 if __name__ == "__main__":

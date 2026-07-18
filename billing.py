@@ -1,6 +1,6 @@
 # ============================================================
-# Stripe 월 구독 (KRW 2,990) — Checkout / Portal / sync
-# Secrets 없으면 비활성 (앱은 free 쿼터만 사용)
+# Stripe 월 구독 (KRW 3,990) — Checkout / Portal / sync
+# Pro: X·시그널 우선 + 광고 제거 (매체 RSS·번역은 무료)
 # ============================================================
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from typing import Any
 
 import streamlit as st
 
-PRO_PRICE_LABEL = "월 2,990원"
+PRO_PRICE_LABEL = "월 3,990원"
 _SYNC_TS_KEY = "stripe_sync_ts"
 _SYNC_TTL_SEC = 300  # 로그인 후 Stripe 재조회 최소 간격
 

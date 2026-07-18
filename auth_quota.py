@@ -1,6 +1,7 @@
 # ============================================================
-# Google 로그인 (Supabase) + 일일 번역 쿼터
-# Secrets/환경변수 없으면 None 반환 → 앱은 세션 맛보기만 사용
+# Google 로그인 (Supabase) + Pro plan / (레거시) 일일 쿼터 헬퍼
+# 매체 RSS 번역은 app.py에서 무료. 본 모듈은 인증·Pro·Stripe 연동용.
+# Secrets 없으면 auth 비활성 → RSS·번역은 계속 동작
 # ============================================================
 
 from __future__ import annotations
