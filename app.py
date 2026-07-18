@@ -827,7 +827,9 @@ def render_reader_page(article: dict[str, Any]) -> None:
     source = article.get("source", "")
     link = article.get("link", "")
     domain = _source_domain(link)
-    rel = _relative_time(article.get("published_iso", ""))
+    pub_iso = article.get("published_iso", "")
+    rel = _relative_time(pub_iso)
+    abs_time = _format_time(pub_iso)
     same = translated.strip() == title.strip()
 
     pills = ""
@@ -854,8 +856,9 @@ def render_reader_page(article: dict[str, Any]) -> None:
             )
         st.markdown(
             f'<div class="reader-meta">'
-            f"{html.escape(source)}"
+            f"{html.escape(abs_time)}"
             f' · {html.escape(rel)}'
+            f' · {html.escape(source)}'
             f' · {html.escape(domain or "rss")}'
             f"</div>",
             unsafe_allow_html=True,
@@ -1634,12 +1637,17 @@ def _news_card_html(row: dict[str, Any], mode: DisplayMode, _watchlist: list[str
 
 
 def _format_time(iso: str) -> str:
-    """카드에 표시하는 시각 — 항상 KST(UTC+9)."""
+    """카드에 표시하는 시각 — 항상 KST(UTC+9). 당일이 아니면 날짜 포함."""
     try:
-        dt = datetime.fromisoformat(iso)
+        raw = (iso or "").replace("Z", "+00:00")
+        dt = datetime.fromisoformat(raw)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(KST).strftime("%H:%M")
+        local = dt.astimezone(KST)
+        now = _now_kst()
+        if local.date() == now.date():
+            return f"{local.strftime('%H:%M')} KST"
+        return f"{local.strftime('%m/%d %H:%M')} KST"
     except ValueError:
         return "--:--"
 
