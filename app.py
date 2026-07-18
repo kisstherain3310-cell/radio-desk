@@ -18,7 +18,7 @@ import json
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any, Literal
@@ -75,6 +75,8 @@ RSS_HEADERS = {
 
 ALL_SOURCES = [f["source"] for f in CRYPTO_FEEDS + STOCK_FEEDS]
 SETTINGS_PATH = Path(__file__).resolve().parent / "data" / "user_settings.json"
+# 방문객 표시용 시각 — 항상 한국 표준시 (서머타임 없음)
+KST = timezone(timedelta(hours=9))
 
 # 워치리스트 외 시장 시그널 키워드 (Hot 점수 보강)
 SIGNAL_KEYWORDS = [
@@ -1317,6 +1319,10 @@ def _heat_info(
     }
 
 
+def _now_kst() -> datetime:
+    return datetime.now(KST)
+
+
 def _relative_time(iso: str) -> str:
     try:
         dt = datetime.fromisoformat(iso)
@@ -1433,7 +1439,7 @@ def prepare_rows(
     """소스 필터 → 후보 구성 → (번역) → 검색 → 정렬 → limit."""
     rows: list[dict[str, Any]] = []
     seen: set[str] = st.session_state.seen_ids
-    fetched_at = fetched_at or datetime.now().strftime("%H:%M:%S")
+    fetched_at = fetched_at or _now_kst().strftime("%H:%M:%S")
     # 검색이 번역 이후에 걸리므로, 쿼리 있을 때 후보 풀을 더 넓게
     pool_cap = max(limit * 5, 100) if query.strip() else max(limit * 3, limit)
 
@@ -1628,11 +1634,12 @@ def _news_card_html(row: dict[str, Any], mode: DisplayMode, _watchlist: list[str
 
 
 def _format_time(iso: str) -> str:
+    """카드에 표시하는 시각 — 항상 KST(UTC+9)."""
     try:
         dt = datetime.fromisoformat(iso)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone().strftime("%H:%M")
+        return dt.astimezone(KST).strftime("%H:%M")
     except ValueError:
         return "--:--"
 
@@ -1661,7 +1668,7 @@ def render_feed_panel(
         f'<div class="feed-meta">{len(rows)} results'
         f' · {new_count} new · {hot_count} hot'
         f' · {sort_label}'
-        f' · sync {datetime.now().strftime("%H:%M:%S")}</div>',
+        f' · sync {_now_kst().strftime("%H:%M:%S")} KST</div>',
         unsafe_allow_html=True,
     )
 
@@ -2253,7 +2260,7 @@ def main() -> None:
     else:
         with st.spinner("속보 수집 중… (RSS 병렬 로딩)"):
             crypto_news, stock_news, rss_health, is_stale = _load_news_stable()
-    fetched_at = datetime.now().strftime("%H:%M:%S")
+    fetched_at = _now_kst().strftime("%H:%M:%S")
 
     watchlist = settings.get("watchlist", [])
     limit = int(settings.get("result_limit", 40))
