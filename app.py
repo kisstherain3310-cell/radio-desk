@@ -31,6 +31,8 @@ import streamlit.components.v1 as components
 from dotenv import load_dotenv
 from streamlit_autorefresh import st_autorefresh
 
+import auth_quota
+
 def _load_gemini_api_key() -> str:
     """Streamlit Cloud Secrets 우선, 로컬은 .env / 환경변수."""
     try:
@@ -696,7 +698,7 @@ def _ensure_source_keys(settings: dict[str, Any]) -> dict[str, Any]:
     return settings
 
 
-# 세션당 무료 번역 맛보기 한도 (로그인 전)
+# 세션당 무료 번역 맛보기 한도 (비로그인)
 FREE_TRANSLATE_SESSION_LIMIT = 10
 
 
@@ -726,23 +728,38 @@ def init_session_settings() -> None:
         st.session_state.translate_quota_used = 0
 
 
+def _is_logged_in() -> bool:
+    return auth_quota.get_current_user() is not None
+
+
 def _translate_quota_limit() -> int:
+    user = auth_quota.get_current_user()
+    if user:
+        return auth_quota.get_daily_limit(user)
     return int(
         st.session_state.get("translate_quota_limit", FREE_TRANSLATE_SESSION_LIMIT)
     )
 
 
 def _translate_quota_used() -> int:
+    if auth_quota.get_current_user():
+        return auth_quota.get_daily_used()
     return int(st.session_state.get("translate_quota_used", 0))
 
 
 def _translate_quota_remaining() -> int:
+    user = auth_quota.get_current_user()
+    if user:
+        return auth_quota.get_daily_remaining(user)
     return max(0, _translate_quota_limit() - _translate_quota_used())
 
 
 def _translate_quota_consume(n: int) -> None:
     n = max(0, int(n))
     if n <= 0:
+        return
+    if auth_quota.get_current_user():
+        auth_quota.consume_daily(n)
         return
     st.session_state["translate_quota_used"] = min(
         _translate_quota_limit(),
@@ -751,7 +768,20 @@ def _translate_quota_consume(n: int) -> None:
 
 
 def _translate_quota_reset() -> None:
+    """비로그인 세션 쿼터만 초기화 (테스트용)."""
     st.session_state["translate_quota_used"] = 0
+
+
+def _quota_status_label() -> str:
+    """배너/사이드바용 잔여 문구."""
+    rem = _translate_quota_remaining()
+    lim = _translate_quota_limit()
+    if _is_logged_in():
+        return f"오늘 번역 잔여 {rem}/{lim} (KST)"
+    return (
+        f"세션 맛보기 잔여 {rem}/{lim} · 로그인 시 하루 "
+        f"{auth_quota.FREE_TRANSLATE_DAILY_LIMIT}건"
+    )
 
 
 def _register_article(row: dict[str, Any], category: Category = "crypto") -> str:
@@ -1205,7 +1235,7 @@ def translate_titles_batch(
 ) -> dict[str, str]:
     """
     HOT/NEW 후보를 메모리 캐시 + 배치 1회로 번역.
-    세션 맛보기 잔여만큼만 신규 API 호출. 캐시 히트는 차감 없음.
+    잔여 쿼터(세션 또는 일일)만큼만 신규 API 호출. 캐시 히트는 차감 없음.
     반환: {원문: 번역문}
     """
     result: dict[str, str] = {}
@@ -1759,13 +1789,19 @@ def _translation_status_lines(
             True,
         )
 
-    limit = _translate_quota_limit()
     remaining = _translate_quota_remaining()
-    taste = f"맛보기 잔여 {remaining}/{limit}"
+    taste = _quota_status_label()
+    logged_in = _is_logged_in()
 
     if enable_translation and remaining <= 0:
+        if logged_in:
+            return (
+                f"오늘 무료 번역 소진 · 원문만 표시 · 추후 구독 시 무제한 · {taste}",
+                True,
+            )
         return (
-            f"번역 맛보기 소진 · 원문만 표시 · 추후 구독 시 무제한 ({taste})",
+            f"세션 맛보기 소진 · Google 로그인하면 하루 "
+            f"{auth_quota.FREE_TRANSLATE_DAILY_LIMIT}건 · {taste}",
             True,
         )
 
@@ -1807,8 +1843,56 @@ def _rss_status_line(health: dict[str, Any], is_stale: bool) -> str:
     return line
 
 
+def _render_auth_sidebar() -> None:
+    st.markdown('<div class="sidebar-label">계정</div>', unsafe_allow_html=True)
+    if not auth_quota.auth_configured():
+        st.caption(
+            "Google 로그인 미설정 · Secrets에 SUPABASE_URL / "
+            "SUPABASE_ANON_KEY / APP_URL 을 넣으면 활성화됩니다."
+        )
+        st.caption(
+            f"지금은 세션 맛보기 {FREE_TRANSLATE_SESSION_LIMIT}건만 사용합니다."
+        )
+        return
+
+    user = auth_quota.get_current_user()
+    if user:
+        email = user.get("email") or user.get("id", "")
+        st.caption(f"로그인 · {email}")
+        rem = _translate_quota_remaining()
+        lim = _translate_quota_limit()
+        st.caption(f"오늘 잔여: {rem}/{lim}건 (KST)")
+        if rem <= 0:
+            st.info("오늘 무료 번역 소진 · 추후 구독 시 무제한")
+        if st.button("로그아웃", use_container_width=True, key="btn_logout"):
+            auth_quota.logout()
+            st.rerun()
+    else:
+        st.caption(
+            f"비로그인 · 세션 맛보기 {FREE_TRANSLATE_SESSION_LIMIT}건 · "
+            f"로그인 시 하루 {auth_quota.FREE_TRANSLATE_DAILY_LIMIT}건"
+        )
+        oauth_url = auth_quota.get_google_oauth_url()
+        if oauth_url:
+            st.link_button(
+                "Google로 로그인",
+                oauth_url,
+                use_container_width=True,
+                type="primary",
+            )
+        else:
+            st.warning("로그인 URL을 만들지 못했습니다. Secrets·Supabase 설정을 확인하세요.")
+        err = st.session_state.get("auth_last_error")
+        if err:
+            st.caption(f"로그인 오류: {err}")
+
+
 def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     settings = st.session_state.settings
+
+    # 0) 계정 / Google 로그인
+    _render_auth_sidebar()
+    st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
 
     # 1) 검색
     st.markdown('<div class="sidebar-label">검색</div>', unsafe_allow_html=True)
@@ -1849,16 +1933,20 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
         '<div class="sidebar-hint">'
         "표시 모드 = 카드에 무엇을 보여줄지 · "
         "번역 스위치(메인 상단) = 실제로 Gemini 호출할지 · "
-        f"세션당 신규 번역 {FREE_TRANSLATE_SESSION_LIMIT}건 무료 "
-        "(캐시 히트는 차감 없음)"
+        "캐시 히트는 쿼터 차감 없음"
         "</div>",
         unsafe_allow_html=True,
     )
+    st.caption(_quota_status_label())
     q_rem = _translate_quota_remaining()
-    q_lim = _translate_quota_limit()
-    st.caption(f"맛보기 잔여: {q_rem}/{q_lim}건")
     if q_rem <= 0:
-        st.info("맛보기 소진 · 추후 구독 시 무제한 번역")
+        if _is_logged_in():
+            st.info("오늘 무료 번역 소진 · 추후 구독 시 무제한")
+        else:
+            st.info(
+                f"세션 맛보기 소진 · Google 로그인하면 하루 "
+                f"{auth_quota.FREE_TRANSLATE_DAILY_LIMIT}건"
+            )
     if settings.get("enable_translation"):
         settings["translate_only_hot_new"] = st.checkbox(
             "HOT / NEW 만 번역 (권장)",
@@ -1871,16 +1959,19 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
             max_value=12,
             value=int(settings.get("translate_limit", 6)),
             key="translate_limit_slider",
-            help="실제 API는 세션 맛보기 잔여와 min으로 제한됩니다.",
+            help="실제 API는 잔여 쿼터와 min으로 제한됩니다.",
         )
         calls = int(st.session_state.get("translate_api_calls", 0))
         batch_n = int(st.session_state.get("translate_last_batch_size", 0))
         st.caption(f"이번 세션 API 호출: {calls}회 · 마지막 배치: {batch_n}건")
     else:
         st.caption("현재 번역 OFF · 메인 상단 스위치로 켤 수 있습니다.")
-    if st.button("맛보기 쿼터 초기화 (테스트)", use_container_width=True):
-        _translate_quota_reset()
-        st.rerun()
+    if not _is_logged_in():
+        if st.button("맛보기 쿼터 초기화 (테스트)", use_container_width=True):
+            _translate_quota_reset()
+            st.rerun()
+    else:
+        st.caption("로그인 중 · 오늘 사용량은 Supabase에 저장됩니다.")
 
     # 3) 워치리스트
     st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
@@ -2230,6 +2321,7 @@ def main() -> None:
         initial_sidebar_state="expanded",
     )
     init_session_settings()
+    auth_quota.init_auth()
     inject_css()
 
     # ---- 읽기 페이지 프로토타입 (?view=read&id=...) ----
@@ -2239,6 +2331,8 @@ def main() -> None:
         article_id = unquote(str(raw_id or ""))
         # 읽기 화면에서는 60s 전체 리프레시 부담을 줄임
         settings = st.session_state.settings
+        with st.sidebar:
+            _render_auth_sidebar()
         settings = render_title_with_hamburger(settings)
         with st.spinner("기사 불러오는 중…"):
             article = _resolve_article(article_id)
