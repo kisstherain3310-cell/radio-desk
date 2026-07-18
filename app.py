@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import quote, unquote
 
 import feedparser
 import requests
@@ -480,11 +481,19 @@ section[data-testid="stSidebar"] div[data-testid="stCheckbox"] label p {
   text-underline-offset: 0.18em;
 }
 
-.headline-ko {
+.headline-ko,
+.headline-ko a,
+.headline-ko a:link,
+.headline-ko a:visited {
   font-size: 0.84rem;
   font-weight: 400;
   color: var(--muted);
   line-height: 1.4;
+  text-decoration: none;
+}
+.headline-ko a:hover {
+  color: var(--text-soft);
+  text-decoration: underline;
 }
 
 .headline-en-only {
@@ -533,6 +542,82 @@ div[data-testid="stHorizontalBlock"]:has(.panel-head) > div:nth-child(1) {
 }
 div[data-testid="stHorizontalBlock"]:has(.panel-head) > div:nth-child(2) {
   padding-left: 0.75rem !important;
+}
+
+/* ---- Reader page (prototype) ---- */
+.ad-slot {
+  min-height: 280px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 1rem 0.5rem;
+  color: var(--faint);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.ad-slot .ad-label {
+  font-weight: 700;
+  color: #6a7384;
+  font-size: 0.62rem;
+}
+.ad-slot .ad-note {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.68rem;
+  color: #4a5160;
+  line-height: 1.4;
+  max-width: 9rem;
+}
+.reader-kicker {
+  font-size: 0.72rem;
+  color: var(--faint);
+  margin: 0 0 0.75rem 0;
+}
+.reader-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #f3f5f9;
+  line-height: 1.35;
+  letter-spacing: -0.03em;
+  margin: 0 0 0.55rem 0;
+}
+.reader-ko {
+  font-size: 1.02rem;
+  font-weight: 400;
+  color: var(--text-soft);
+  line-height: 1.45;
+  margin: 0 0 1rem 0;
+}
+.reader-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0 0 1.1rem 0;
+}
+.reader-notice {
+  font-size: 0.72rem;
+  color: var(--faint);
+  line-height: 1.45;
+  margin: 1rem 0 0 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.reader-pill-row {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+@media (max-width: 900px) {
+  .ad-slot { min-height: 100px; margin-bottom: 0.75rem; }
 }
 </style>
 """
@@ -616,6 +701,148 @@ def init_session_settings() -> None:
         st.session_state.translation_memory = {}
     if "translate_api_calls" not in st.session_state:
         st.session_state.translate_api_calls = 0
+    if "article_index" not in st.session_state:
+        st.session_state.article_index = {}
+
+
+def _register_article(row: dict[str, Any], category: Category = "crypto") -> str:
+    """Cache article payload for reader page; return stable id."""
+    item = row["item"]
+    aid = str(row.get("id") or _item_id(item))
+    st.session_state.article_index[aid] = {
+        "id": aid,
+        "title": item.get("title", ""),
+        "translated": row.get("translated") or item.get("title", ""),
+        "source": item.get("source", ""),
+        "link": item.get("link", "") or "",
+        "published_iso": item.get("published_iso", ""),
+        "category": category,
+        "is_new": bool(row.get("is_new")),
+        "is_hot": bool(row.get("is_hot")),
+        "heat_tier": row.get("heat_tier"),
+        "heat_score": row.get("heat_score", 0),
+    }
+    return aid
+
+
+def _read_href(article_id: str) -> str:
+    return f"?view=read&id={quote(article_id, safe='')}"
+
+
+def _resolve_article(article_id: str) -> dict[str, Any] | None:
+    """Session cache first; rebuild from RSS if cold open / refresh."""
+    if not article_id:
+        return None
+    cached = st.session_state.article_index.get(article_id)
+    if cached:
+        return cached
+
+    crypto_news, stock_news = fetch_all_news()
+    for cat, news in (("crypto", crypto_news), ("stocks", stock_news)):
+        for item in news:
+            iid = str(item.get("id") or _item_id(item))
+            if iid != article_id:
+                continue
+            title = item.get("title", "")
+            row = {
+                "item": item,
+                "translated": title,
+                "id": iid,
+                "is_new": False,
+                "is_hot": False,
+                "heat_tier": None,
+                "heat_score": 0,
+            }
+            _register_article(row, cat)
+            return st.session_state.article_index[iid]
+    return None
+
+
+def _ad_slot_html(side: str) -> str:
+    return (
+        f'<div class="ad-slot" aria-label="광고 영역">'
+        f'<div class="ad-label">Ad · {html.escape(side)}</div>'
+        f'<div class="ad-note">프로토타입 슬롯<br/>배포 시 광고 코드 연결</div>'
+        f"</div>"
+    )
+
+
+def render_reader_page(article: dict[str, Any]) -> None:
+    """Center article + left/right ad placeholders + CTA to original."""
+    title = article.get("title", "")
+    translated = article.get("translated") or title
+    source = article.get("source", "")
+    link = article.get("link", "")
+    domain = _source_domain(link)
+    rel = _relative_time(article.get("published_iso", ""))
+    same = translated.strip() == title.strip()
+
+    pills = ""
+    if article.get("is_new"):
+        pills += '<span class="pill pill-new">NEW</span>'
+    tier = article.get("heat_tier")
+    if tier == "hot+":
+        pills += f'<span class="pill pill-hot-plus">HOT+{article.get("heat_score", 0)}</span>'
+    elif tier == "hot":
+        pills += f'<span class="pill pill-hot">HOT·{article.get("heat_score", 0)}</span>'
+
+    left, center, right = st.columns([1, 2.4, 1], gap="medium")
+    with left:
+        st.markdown(_ad_slot_html("Left"), unsafe_allow_html=True)
+    with center:
+        st.markdown(
+            '<div class="reader-kicker">라디오 데스크 · 읽기</div>',
+            unsafe_allow_html=True,
+        )
+        if pills:
+            st.markdown(
+                f'<div class="reader-pill-row">{pills}</div>',
+                unsafe_allow_html=True,
+            )
+        st.markdown(
+            f'<div class="reader-meta">'
+            f"{html.escape(source)}"
+            f' · {html.escape(rel)}'
+            f' · {html.escape(domain or "rss")}'
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f'<h1 class="reader-title">{html.escape(title)}</h1>',
+            unsafe_allow_html=True,
+        )
+        if not same:
+            st.markdown(
+                f'<div class="reader-ko">{html.escape(translated)}</div>',
+                unsafe_allow_html=True,
+            )
+
+        cta1, cta2 = st.columns(2)
+        with cta1:
+            if link:
+                st.link_button(
+                    "원문 보기",
+                    link,
+                    use_container_width=True,
+                    type="primary",
+                )
+            else:
+                st.button("원문 없음", disabled=True, use_container_width=True)
+        with cta2:
+            if st.button("목록으로", use_container_width=True, key="reader_back"):
+                st.query_params.clear()
+                st.rerun()
+
+        st.markdown(
+            '<div class="reader-notice">'
+            "이 페이지는 헤드라인·번역 안내입니다. "
+            "기사 전문·이미지는 원문 사이트에서 확인하세요. "
+            "좌·우 ‘Ad’ 영역은 배포 후 광고가 들어갈 자리입니다."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+    with right:
+        st.markdown(_ad_slot_html("Right"), unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1150,10 +1377,11 @@ def prepare_rows(
     return rows[:limit]
 
 
-def _linked_or_span(text_html: str, link: str, has_link: bool, css_class: str) -> str:
+def _linked_or_span(text_html: str, href: str, has_link: bool, css_class: str) -> str:
+    """Headline links to our reader page (same tab)."""
     if has_link:
         return (
-            f'<a class="{css_class}" href="{link}" target="_blank" rel="noopener">{text_html}</a>'
+            f'<a class="{css_class}" href="{href}">{text_html}</a>'
         )
     return f'<span class="headline-en-only">{text_html}</span>'
 
@@ -1167,6 +1395,8 @@ def _news_card_html(row: dict[str, Any], mode: DisplayMode, _watchlist: list[str
     link = html.escape(link_raw, quote=True)
     has_link = bool(link_raw)
     domain = _source_domain(link_raw)
+    article_id = str(row.get("id") or _item_id(item))
+    read_href = html.escape(_read_href(article_id), quote=True)
 
     if row["hits"]:
         en_html = _highlight_html(item.get("title", ""), row["hits"])
@@ -1192,24 +1422,31 @@ def _news_card_html(row: dict[str, Any], mode: DisplayMode, _watchlist: list[str
     stack: list[str] = ['<div class="headline-stack">']
     raw_title = item.get("title", "")
     same_as_origin = translated.strip() == raw_title.strip()
+    # 헤드라인 → 우리 읽기 페이지 (원문은 읽기 페이지의 CTA)
     if mode == "both":
         stack.append(
-            f"<div>{_linked_or_span(en_html, link, has_link, 'headline-en')}</div>"
+            f"<div>{_linked_or_span(en_html, read_href, True, 'headline-en')}</div>"
         )
         if not same_as_origin:
-            stack.append(f'<div class="headline-ko">{ko_html}</div>')
+            stack.append(
+                f'<div class="headline-ko">'
+                f'<a class="headline-ko" href="{read_href}">{ko_html}</a>'
+                f"</div>"
+            )
     elif mode == "en":
         stack.append(
-            f"<div>{_linked_or_span(en_html, link, has_link, 'headline-en')}</div>"
+            f"<div>{_linked_or_span(en_html, read_href, True, 'headline-en')}</div>"
         )
     else:
-        stack.append(_linked_or_span(ko_html, link, has_link, "headline-en"))
+        stack.append(_linked_or_span(ko_html, read_href, True, "headline-en"))
     stack.append("</div>")
 
     domain_html = html.escape(domain) if domain else "rss"
     source_html = html.escape(item["source"])
+    # 도메인만 원문 직접 링크 (고급 사용자용)
     host_html = (
-        f'<a href="{link}" target="_blank" rel="noopener">{domain_html}</a>'
+        f'<a href="{link}" target="_blank" rel="noopener" title="원문 바로가기">'
+        f"{domain_html}</a>"
         if has_link
         else domain_html
     )
@@ -1258,6 +1495,7 @@ def render_feed_panel(
     mode: DisplayMode,
     watchlist: list[str],
     sort_hot_first: bool = True,
+    category: Category = "crypto",
 ) -> None:
     st.markdown(
         f'<div class="panel-head {css_class}">'
@@ -1281,6 +1519,8 @@ def render_feed_panel(
         st.info("표시할 속보가 없습니다. 소스/검색/워치리스트 조건을 확인해 주세요.")
         return
 
+    for r in rows:
+        _register_article(r, category)
     cards = "".join(_news_card_html(r, mode, watchlist) for r in rows)
     st.markdown(cards, unsafe_allow_html=True)
 
@@ -1755,6 +1995,26 @@ def main() -> None:
     )
     init_session_settings()
     inject_css()
+
+    # ---- 읽기 페이지 프로토타입 (?view=read&id=...) ----
+    view = str(st.query_params.get("view", "") or "")
+    if view == "read":
+        raw_id = st.query_params.get("id", "")
+        article_id = unquote(str(raw_id or ""))
+        # 읽기 화면에서는 60s 전체 리프레시 부담을 줄임
+        settings = st.session_state.settings
+        settings = render_title_with_hamburger(settings)
+        with st.spinner("기사 불러오는 중…"):
+            article = _resolve_article(article_id)
+        if not article:
+            st.warning("기사를 찾지 못했습니다. 목록으로 돌아가 다시 선택해 주세요.")
+            if st.button("목록으로", key="reader_missing_back"):
+                st.query_params.clear()
+                st.rerun()
+            return
+        render_reader_page(article)
+        return
+
     st_autorefresh(interval=60_000, key="news_autorefresh")
 
     with st.sidebar:
@@ -1817,15 +2077,7 @@ def main() -> None:
         translate_only_hot_new=translate_only_hot_new,
     )
 
-    # First pass flags is_new against seen_ids; then alerts; then update seen
-    # Recompute is_new already done in prepare_rows using current seen set
     _update_seen_and_alerts(crypto_rows + stock_rows, settings)
-
-    # After seeding, is_new was False for everyone — re-flag for display only on
-    # subsequent runs. On first run seeded_seen just became True with no NEW.
-    # On later runs prepare_rows already set is_new correctly BEFORE update.
-    # Bug: we call prepare_rows then _update_seen which marks all seen — but
-    # is_new was computed before update, so display is correct. Good.
 
     col_crypto, col_stocks = st.columns(2, gap="medium")
 
@@ -1841,6 +2093,7 @@ def main() -> None:
             mode=mode,
             watchlist=watchlist,
             sort_hot_first=bool(settings.get("sort_hot_first", True)),
+            category="crypto",
         )
 
     with col_stocks:
@@ -1855,6 +2108,7 @@ def main() -> None:
             mode=mode,
             watchlist=watchlist,
             sort_hot_first=bool(settings.get("sort_hot_first", True)),
+            category="stocks",
         )
 
 
