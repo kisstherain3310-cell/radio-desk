@@ -1,41 +1,69 @@
-# 라디오 데스크 — 배포 체크리스트
+# 라디오 데스크 — 배포 가이드 (Streamlit Community Cloud)
 
-배포(Streamlit Community Cloud 등) 전에 아래를 확인하세요.
+## 1) 준비
 
-## 필수
+- GitHub 저장소: https://github.com/kisstherain3310-cell/radio-desk
+- Main file: `app.py`
+- Python 의존성: `requirements.txt`
+- API 키는 코드에 넣지 말고 **Secrets**에만 등록
 
-- [ ] GitHub `radio-desk` 최신 코드 push
-- [ ] 클라우드 Secrets에 `GEMINI_API_KEY` 등록 (코드/Git에 올리지 않음)
-- [ ] `.env`는 로컬 전용 · 원격에 커밋되지 않음
-- [ ] 앱 진입 URL에서 피드(CRYPTO / STOCKS) 정상 로드
-- [ ] 번역 토글 OFF/ON · 상태 배너 문구 확인
+## 2) Streamlit Cloud에서 앱 만들기
 
-## 읽기 페이지 + 광고 (꼭 챙길 것)
+1. 브라우저에서 [https://share.streamlit.io](https://share.streamlit.io) 접속  
+   (안 되면 [https://streamlit.io/cloud](https://streamlit.io/cloud))
+2. **GitHub 계정으로 로그인** (저장소 권한이 있는 계정)
+3. **Create app** / **New app**
+4. 설정 예시:
+   - Repository: `kisstherain3310-cell/radio-desk`
+   - Branch: `main`
+   - Main file path: `app.py`
+5. **Advanced settings → Secrets** 에 아래 형식으로 입력 후 저장:
 
-프로토타입은 이미 동작합니다.
+```toml
+GEMINI_API_KEY = "여기에_제미나이_키"
+```
 
-1. 피드에서 **헤드라인 클릭** → `?view=read&id=...` 읽기 화면
-2. **가운데**: 제목 · 번역 · 메타
-3. **왼쪽 / 오른쪽**: `Ad` 플레이스홀더
-4. **원문 보기** → 외부 언론사 (새 탭/링크)
-5. **목록으로** → 쿼리 파라미터 제거하고 피드 복귀
+6. **Deploy** 클릭
+7. 완료되면 `https://xxxx.streamlit.app` URL이 생깁니다
 
-배포 후 확인할 항목:
+## 3) 배포 후 확인 체크리스트
 
-- [ ] 배포 URL에서도 헤드라인 → 읽기 페이지 이동이 되는가
-- [ ] 읽기 URL을 새로고침해도 기사가 다시 찾아지는가 (RSS로 재조회)
-- [ ] 「원문 보기」만 외부로 나가고, 카드 클릭이 바로 외부로 가지 않는가
-- [ ] 좌·우 Ad 슬롯이 보이는가 (모바일에서는 레이아웃이 좁아질 수 있음)
+### 필수
 
-### 광고 네트워크 연동 시 (배포 이후)
+- [ ] 피드(CRYPTO / STOCKS)가 로드되는가
+- [ ] 번역 토글 OFF/ON · 상태 배너 확인
+- [ ] Secrets 키를 넣었다면 번역 ON 시 한글이 뜨는가 (할당량 부족이면 안내 문구)
 
-- [ ] AdSense 등 코드는 **우리 도메인 읽기 페이지 / 피드**에만 삽입
-- [ ] 외부 원문 iframe + 주변 광고는 사용하지 않음
-- [ ] 60초 자동갱신과 광고 리프레시를 연동하지 않음
-- [ ] 슬롯에 “광고” 라벨 유지
-- [ ] (선택) Pro 구독 시 광고 숨김
+### 읽기 페이지 + 광고 슬롯 (꼭)
+
+- [ ] 헤드라인 클릭 → 읽기 페이지 (`?view=read&id=...`)
+- [ ] 가운데 제목·번역, 좌·우 Ad 슬롯
+- [ ] **원문 보기**만 외부로 이동
+- [ ] **목록으로** 복귀
+- [ ] 읽기 URL 새로고침 후에도 기사가 다시 찾아지는가
+
+### 광고 네트워크 연동 시 (나중)
+
+- [ ] 우리 도메인 페이지에만 광고 코드
+- [ ] 원문 iframe + 주변 광고 금지
+- [ ] 자동갱신과 광고 리프레시 연동 금지
+
+## 4) 코드 수정 후 반영
+
+로컬/Cursor에서 수정 → GitHub `main` push  
+→ Streamlit Cloud가 자동 redeploy (보통 1~3분)
+
+## 5) 문제 해결
+
+| 증상 | 확인 |
+|------|------|
+| 앱이 안 뜸 | Cloud 로그, `requirements.txt`, Main file=`app.py` |
+| 번역 안 됨 | Secrets `GEMINI_API_KEY`, Gemini 할당량 |
+| 피드를 못 가져옴 | Cloud 로그의 RSS/네트워크 오류 |
+| 읽기 페이지 404처럼 비움 | `id` 파라미터, RSS에서 해당 링크를 찾는지 |
 
 ## 참고
 
-- 현재 읽기 페이지는 Streamlit query param 프로토타입입니다.
-- 장기적으로는 전용 웹앱 URL(` /read/...`) + 반응형 광고가 더 안정적입니다.
+- 로컬: `.env`의 `GEMINI_API_KEY`
+- 클라우드: Streamlit **Secrets**의 `GEMINI_API_KEY`
+- 현재 읽기 페이지는 query param 프로토타입입니다.

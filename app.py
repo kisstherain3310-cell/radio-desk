@@ -4,8 +4,9 @@
 # 필요 패키지 설치:
 #   pip install streamlit streamlit-autorefresh feedparser google-generativeai python-dotenv
 # 실행:
-#   1) .env 에 GEMINI_API_KEY 입력 (번역용, 뉴스 수집에는 불필요)
+#   1) 로컬: .env 에 GEMINI_API_KEY / 클라우드: Streamlit Secrets
 #   2) streamlit run app.py
+#   3) 배포: https://share.streamlit.io → DEPLOY.md 참고
 #
 # 뉴스 출처 (공개 RSS, API 키 불필요)
 # ============================================================
@@ -30,8 +31,18 @@ import streamlit.components.v1 as components
 from dotenv import load_dotenv
 from streamlit_autorefresh import st_autorefresh
 
-load_dotenv(Path(__file__).resolve().parent / ".env")
-API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+def _load_gemini_api_key() -> str:
+    """Streamlit Cloud Secrets 우선, 로컬은 .env / 환경변수."""
+    try:
+        if "GEMINI_API_KEY" in st.secrets:
+            return str(st.secrets["GEMINI_API_KEY"]).strip()
+    except Exception:
+        pass
+    load_dotenv(Path(__file__).resolve().parent / ".env")
+    return os.getenv("GEMINI_API_KEY", "").strip()
+
+
+API_KEY = _load_gemini_api_key()
 
 Category = Literal["crypto", "stocks"]
 DisplayMode = Literal["both", "en", "ko"]
@@ -1573,7 +1584,7 @@ def _translation_status_lines(
 ) -> tuple[str, bool]:
     """Return (main status text, is_warn)."""
     if not API_KEY:
-        return "번역 불가 · `.env`에 GEMINI_API_KEY가 없습니다", True
+        return "번역 불가 · GEMINI_API_KEY가 없습니다 (.env 또는 Streamlit Secrets)", True
     if st.session_state.get("translate_circuit_open"):
         return "번역 일시중지 · API 할당량/오류 (사이드바에서 재시도)", True
     if not enable_translation:
@@ -1798,7 +1809,7 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
         unsafe_allow_html=True,
     )
     if not API_KEY:
-        st.warning("`.env`의 `GEMINI_API_KEY`가 비어 있습니다.")
+        st.warning("`GEMINI_API_KEY`가 비어 있습니다. 로컬은 `.env`, 배포는 Streamlit Secrets에 넣으세요.")
     else:
         st.markdown(
             f'<div class="sidebar-hint">번역 모델 · {GEMINI_MODEL}</div>',
