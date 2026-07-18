@@ -694,6 +694,10 @@ def _ensure_source_keys(settings: dict[str, Any]) -> dict[str, Any]:
     return settings
 
 
+# 세션당 무료 번역 맛보기 한도 (로그인 전)
+FREE_TRANSLATE_SESSION_LIMIT = 10
+
+
 def init_session_settings() -> None:
     if "settings" not in st.session_state:
         st.session_state.settings = load_settings_file()
@@ -714,6 +718,38 @@ def init_session_settings() -> None:
         st.session_state.translate_api_calls = 0
     if "article_index" not in st.session_state:
         st.session_state.article_index = {}
+    if "translate_quota_limit" not in st.session_state:
+        st.session_state.translate_quota_limit = FREE_TRANSLATE_SESSION_LIMIT
+    if "translate_quota_used" not in st.session_state:
+        st.session_state.translate_quota_used = 0
+
+
+def _translate_quota_limit() -> int:
+    return int(
+        st.session_state.get("translate_quota_limit", FREE_TRANSLATE_SESSION_LIMIT)
+    )
+
+
+def _translate_quota_used() -> int:
+    return int(st.session_state.get("translate_quota_used", 0))
+
+
+def _translate_quota_remaining() -> int:
+    return max(0, _translate_quota_limit() - _translate_quota_used())
+
+
+def _translate_quota_consume(n: int) -> None:
+    n = max(0, int(n))
+    if n <= 0:
+        return
+    st.session_state["translate_quota_used"] = min(
+        _translate_quota_limit(),
+        _translate_quota_used() + n,
+    )
+
+
+def _translate_quota_reset() -> None:
+    st.session_state["translate_quota_used"] = 0
 
 
 def _register_article(row: dict[str, Any], category: Category = "crypto") -> str:
@@ -1164,6 +1200,7 @@ def translate_titles_batch(
 ) -> dict[str, str]:
     """
     HOT/NEW 후보를 메모리 캐시 + 배치 1회로 번역.
+    세션 맛보기 잔여만큼만 신규 API 호출. 캐시 히트는 차감 없음.
     반환: {원문: 번역문}
     """
     result: dict[str, str] = {}
@@ -1171,8 +1208,17 @@ def translate_titles_batch(
         return result
 
     if st.session_state.get("translate_circuit_open"):
+        # 회로 차단 시에도 캐시는 제공
+        for t in titles:
+            t = (t or "").strip()
+            if not t:
+                continue
+            cached = _memory_get(category, t)
+            if cached:
+                result[t] = cached
         return result
 
+    remaining = _translate_quota_remaining()
     unique: list[str] = []
     for t in titles:
         t = (t or "").strip()
@@ -1182,7 +1228,9 @@ def translate_titles_batch(
         if cached:
             result[t] = cached
         elif t not in unique:
-            unique.append(t)
+            if len(unique) < remaining:
+                unique.append(t)
+            # 잔여 없으면 신규 API 후보에 넣지 않음 (원문 유지)
 
     if not unique:
         return result
@@ -1195,6 +1243,7 @@ def translate_titles_batch(
         for src, dst in zip(unique, translated):
             result[src] = dst
             _memory_set(category, src, dst)
+        _translate_quota_consume(len(unique))
         st.session_state["translate_api_calls"] = (
             int(st.session_state.get("translate_api_calls", 0)) + 1
         )
@@ -1425,13 +1474,14 @@ def prepare_rows(
     if sort_hot_first:
         rows.sort(key=_sort_key, reverse=True)
 
-    # --- 할당량 절약: HOT/NEW만, 배치 1회 (검색 전 상위 풀에서) ---
+    # --- HOT/NEW 배치 번역 + 세션 맛보기 쿼터 ---
     translate_pool = rows[: max(limit * 2, limit)]
     if enable_translation and API_KEY:
-        budget = max(0, int(translate_limit))
+        # 컬럼당 상한 (캐시 조회 포함 후보 수). 실제 API는 세션 잔여로 제한됨.
+        col_cap = max(0, int(translate_limit))
         candidates: list[str] = []
         for row in translate_pool:
-            if len(candidates) >= budget:
+            if len(candidates) >= col_cap:
                 break
             title = row["item"].get("title", "")
             if not title:
@@ -1693,13 +1743,27 @@ def _translation_status_lines(
             f"번역 일시중지 · API 할당량/오류{brief} (사이드바에서 재시도)",
             True,
         )
+
+    limit = _translate_quota_limit()
+    remaining = _translate_quota_remaining()
+    taste = f"맛보기 잔여 {remaining}/{limit}"
+
+    if enable_translation and remaining <= 0:
+        return (
+            f"번역 맛보기 소진 · 원문만 표시 · 추후 구독 시 무제한 ({taste})",
+            True,
+        )
+
     err = st.session_state.get("translate_last_error")
     if enable_translation and err and not st.session_state.get("translate_circuit_open"):
-        return "번역 ON · 최근 오류 있음 (일부는 원문만 표시될 수 있음)", True
+        return f"번역 ON · 최근 오류 있음 · {taste}", True
     if not enable_translation:
-        return "번역 OFF · 원문만 표시", False
+        return f"번역 OFF · 원문만 표시 · {taste}", False
     scope = "HOT/NEW" if translate_only_hot_new else "표시 항목"
-    return f"번역 ON · {scope} 최대 {translate_limit}건/컬럼", False
+    return (
+        f"번역 ON · {scope} 최대 {translate_limit}건/컬럼 · {taste}",
+        False,
+    )
 
 
 def _rss_status_line(health: dict[str, Any], is_stale: bool) -> str:
@@ -1769,10 +1833,17 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     st.markdown(
         '<div class="sidebar-hint">'
         "표시 모드 = 카드에 무엇을 보여줄지 · "
-        "번역 스위치(메인 상단) = 실제로 Gemini 호출할지"
+        "번역 스위치(메인 상단) = 실제로 Gemini 호출할지 · "
+        f"세션당 신규 번역 {FREE_TRANSLATE_SESSION_LIMIT}건 무료 "
+        "(캐시 히트는 차감 없음)"
         "</div>",
         unsafe_allow_html=True,
     )
+    q_rem = _translate_quota_remaining()
+    q_lim = _translate_quota_limit()
+    st.caption(f"맛보기 잔여: {q_rem}/{q_lim}건")
+    if q_rem <= 0:
+        st.info("맛보기 소진 · 추후 구독 시 무제한 번역")
     if settings.get("enable_translation"):
         settings["translate_only_hot_new"] = st.checkbox(
             "HOT / NEW 만 번역 (권장)",
@@ -1785,12 +1856,16 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
             max_value=12,
             value=int(settings.get("translate_limit", 6)),
             key="translate_limit_slider",
+            help="실제 API는 세션 맛보기 잔여와 min으로 제한됩니다.",
         )
         calls = int(st.session_state.get("translate_api_calls", 0))
         batch_n = int(st.session_state.get("translate_last_batch_size", 0))
         st.caption(f"이번 세션 API 호출: {calls}회 · 마지막 배치: {batch_n}건")
     else:
         st.caption("현재 번역 OFF · 메인 상단 스위치로 켤 수 있습니다.")
+    if st.button("맛보기 쿼터 초기화 (테스트)", use_container_width=True):
+        _translate_quota_reset()
+        st.rerun()
 
     # 3) 워치리스트
     st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
@@ -2187,24 +2262,6 @@ def main() -> None:
     translate_limit = int(settings.get("translate_limit", 6))
     translate_only_hot_new = bool(settings.get("translate_only_hot_new", True))
 
-    status_text, status_warn = _translation_status_lines(
-        enable_translation,
-        translate_limit,
-        translate_only_hot_new,
-    )
-    rss_line = _rss_status_line(rss_health, is_stale)
-    fail_n = len(rss_health.get("crypto_fail") or []) + len(
-        rss_health.get("stocks_fail") or []
-    )
-    banner_warn = status_warn or is_stale or fail_n > 0 or bool(rss_health.get("error"))
-    warn_cls = " is-warn" if banner_warn else ""
-    st.markdown(
-        f'<div class="status-banner{warn_cls}">'
-        f"<div>{html.escape(status_text)}</div>"
-        f'<div class="status-rss">{html.escape(rss_line)}</div>'
-        f"</div>",
-        unsafe_allow_html=True,
-    )
     if not crypto_news and not stock_news:
         st.error(
             "RSS를 가져오지 못했습니다. 네트워크·소스 상태를 확인한 뒤 잠시 후 새로고침해 주세요."
@@ -2237,6 +2294,26 @@ def main() -> None:
         enable_translation=enable_translation,
         translate_limit=translate_limit,
         translate_only_hot_new=translate_only_hot_new,
+    )
+
+    # 번역 차감 반영 후 배너 (맛보기 잔여가 이번 새로고침 결과를 포함)
+    status_text, status_warn = _translation_status_lines(
+        enable_translation,
+        translate_limit,
+        translate_only_hot_new,
+    )
+    rss_line = _rss_status_line(rss_health, is_stale)
+    fail_n = len(rss_health.get("crypto_fail") or []) + len(
+        rss_health.get("stocks_fail") or []
+    )
+    banner_warn = status_warn or is_stale or fail_n > 0 or bool(rss_health.get("error"))
+    warn_cls = " is-warn" if banner_warn else ""
+    st.markdown(
+        f'<div class="status-banner{warn_cls}">'
+        f"<div>{html.escape(status_text)}</div>"
+        f'<div class="status-rss">{html.escape(rss_line)}</div>'
+        f"</div>",
+        unsafe_allow_html=True,
     )
 
     _update_seen_and_alerts(crypto_rows + stock_rows, settings)
