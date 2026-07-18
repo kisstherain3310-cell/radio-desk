@@ -11,8 +11,11 @@ from typing import Any
 
 import streamlit as st
 
+import billing
+
 KST = timezone(timedelta(hours=9))
 FREE_TRANSLATE_DAILY_LIMIT = 30
+PRO_DAILY_LIMIT = 10_000
 
 _SESSION_ACCESS = "sb_access_token"
 _SESSION_REFRESH = "sb_refresh_token"
@@ -129,12 +132,12 @@ def _user_from_supabase_user(user: Any) -> dict[str, Any] | None:
 
 
 def _ensure_profile(client, user: dict[str, Any]) -> None:
+    """plan/stripe 는 덮어쓰지 않음 (이메일만 upsert)."""
     try:
         client.table("profiles").upsert(
             {
                 "id": user["id"],
                 "email": user.get("email") or None,
-                "plan": "free",
             },
             on_conflict="id",
         ).execute()
@@ -142,20 +145,44 @@ def _ensure_profile(client, user: dict[str, Any]) -> None:
         pass
 
 
-def _load_plan(client, user: dict[str, Any]) -> str:
+def _load_profile_row(client, user: dict[str, Any]) -> dict[str, Any]:
     try:
         res = (
             client.table("profiles")
-            .select("plan")
+            .select("plan, stripe_customer_id, stripe_subscription_id")
             .eq("id", user["id"])
             .maybe_single()
             .execute()
         )
-        data = getattr(res, "data", None) or {}
-        plan = (data.get("plan") or "free").strip().lower()
-        return plan if plan else "free"
+        return getattr(res, "data", None) or {}
     except Exception:
-        return "free"
+        return {}
+
+
+def _load_plan(client, user: dict[str, Any], *, sync_stripe: bool = True) -> str:
+    data = _load_profile_row(client, user)
+    plan = (data.get("plan") or "free").strip().lower()
+    if plan not in ("free", "pro"):
+        plan = "free"
+
+    if sync_stripe and billing.stripe_configured():
+        try:
+            plan = billing.sync_subscription(user["id"], force=False)
+        except Exception:
+            pass
+
+    user["plan"] = plan
+    user["stripe_customer_id"] = data.get("stripe_customer_id") or user.get(
+        "stripe_customer_id"
+    )
+    # sync 후 최신 customer id
+    billed = billing.get_profile_billing(user["id"]) if billing.service_role_configured() else {}
+    if billed.get("stripe_customer_id"):
+        user["stripe_customer_id"] = billed.get("stripe_customer_id")
+    if billed.get("plan") in ("free", "pro"):
+        user["plan"] = billed["plan"]
+        plan = billed["plan"]
+    return plan
 
 
 def _strip_oauth_query_params() -> None:
@@ -346,10 +373,15 @@ def get_daily_used() -> int:
     return _refresh_daily_cache(force=False)
 
 
+def is_pro(user: dict[str, Any] | None = None) -> bool:
+    u = user if user is not None else get_current_user()
+    return bool(u and (u.get("plan") or "free").lower() == "pro")
+
+
 def get_daily_limit(user: dict[str, Any] | None = None) -> int:
     u = user if user is not None else get_current_user()
-    if u and (u.get("plan") or "free").lower() == "pro":
-        return 10_000
+    if is_pro(u):
+        return PRO_DAILY_LIMIT
     return FREE_TRANSLATE_DAILY_LIMIT
 
 
@@ -405,10 +437,24 @@ def consume_daily(n: int) -> int:
 
 
 def init_auth() -> None:
-    """매 런 시작 시: 콜백 code 처리 + 세션 복원."""
+    """매 런 시작 시: OAuth 콜백 + 세션 복원 + Checkout 처리."""
     if not auth_configured():
         return
     if exchange_code_from_query():
+        user = get_current_user()
+        if user:
+            billing.handle_checkout_query(user["id"])
         return
     if st.session_state.get(_SESSION_ACCESS) and not st.session_state.get(_SESSION_USER):
         get_current_user()
+    user = st.session_state.get(_SESSION_USER)
+    if user:
+        billing.handle_checkout_query(user.get("id"))
+        # 주기적 구독 동기화 (TTL은 billing 내부)
+        if billing.stripe_configured():
+            try:
+                plan = billing.sync_subscription(user["id"], force=False)
+                user["plan"] = plan
+                st.session_state[_SESSION_USER] = user
+            except Exception:
+                pass

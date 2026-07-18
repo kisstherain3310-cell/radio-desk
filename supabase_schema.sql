@@ -1,12 +1,18 @@
 -- 라디오 데스크 — Supabase 스키마 (SQL Editor에서 실행)
--- Google 로그인 사용자 프로필 + 일일 번역 쿼터
+-- Google 로그인 + 일일 번역 쿼터 + Stripe 구독(plan)
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text,
   plan text not null default 'free',
+  stripe_customer_id text,
+  stripe_subscription_id text,
   created_at timestamptz not null default now()
 );
+
+-- 기존 프로젝트 마이그레이션
+alter table public.profiles add column if not exists stripe_customer_id text;
+alter table public.profiles add column if not exists stripe_subscription_id text;
 
 create table if not exists public.translate_usage (
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -26,12 +32,40 @@ create policy "profiles_select_own"
 drop policy if exists "profiles_insert_own" on public.profiles;
 create policy "profiles_insert_own"
   on public.profiles for insert
-  with check (auth.uid() = id);
+  with check (
+    auth.uid() = id
+    and coalesce(plan, 'free') = 'free'
+    and stripe_customer_id is null
+    and stripe_subscription_id is null
+  );
 
+-- 이메일은 본인이 갱신 가능. plan/stripe는 트리거로 보호
 drop policy if exists "profiles_update_own" on public.profiles;
 create policy "profiles_update_own"
   on public.profiles for update
-  using (auth.uid() = id);
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
+
+create or replace function public.protect_profile_billing()
+returns trigger
+language plpgsql
+as $$
+begin
+  -- service_role 은 Stripe 동기화용으로 plan/stripe 변경 허용
+  if coalesce(auth.role(), '') = 'service_role' then
+    return new;
+  end if;
+  new.plan := old.plan;
+  new.stripe_customer_id := old.stripe_customer_id;
+  new.stripe_subscription_id := old.stripe_subscription_id;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_protect_profile_billing on public.profiles;
+create trigger trg_protect_profile_billing
+  before update on public.profiles
+  for each row execute function public.protect_profile_billing();
 
 drop policy if exists "usage_select_own" on public.translate_usage;
 create policy "usage_select_own"

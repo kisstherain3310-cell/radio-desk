@@ -32,6 +32,7 @@ from dotenv import load_dotenv
 from streamlit_autorefresh import st_autorefresh
 
 import auth_quota
+import billing
 
 def _load_gemini_api_key() -> str:
     """Streamlit Cloud Secrets 우선, 로컬은 .env / 환경변수."""
@@ -758,6 +759,8 @@ def _translate_quota_consume(n: int) -> None:
     n = max(0, int(n))
     if n <= 0:
         return
+    if auth_quota.is_pro():
+        return  # Pro: 차감 없음
     if auth_quota.get_current_user():
         auth_quota.consume_daily(n)
         return
@@ -776,6 +779,8 @@ def _quota_status_label() -> str:
     """배너/사이드바용 잔여 문구."""
     rem = _translate_quota_remaining()
     lim = _translate_quota_limit()
+    if auth_quota.is_pro():
+        return "번역 무제한 (Pro)"
     if _is_logged_in():
         return f"오늘 번역 잔여 {rem}/{lim} (KST)"
     return (
@@ -1792,11 +1797,13 @@ def _translation_status_lines(
     remaining = _translate_quota_remaining()
     taste = _quota_status_label()
     logged_in = _is_logged_in()
+    pro = auth_quota.is_pro()
 
-    if enable_translation and remaining <= 0:
+    if enable_translation and remaining <= 0 and not pro:
         if logged_in:
             return (
-                f"오늘 무료 번역 소진 · 원문만 표시 · 추후 구독 시 무제한 · {taste}",
+                f"오늘 무료 번역 소진 · 원문만 표시 · "
+                f"Pro({billing.PRO_PRICE_LABEL}) 구독 시 무제한 · {taste}",
                 True,
             )
         return (
@@ -1843,6 +1850,69 @@ def _rss_status_line(health: dict[str, Any], is_stale: bool) -> str:
     return line
 
 
+def _render_billing_sidebar(user: dict[str, Any]) -> None:
+    """로그인 사용자용 Stripe Checkout / Portal."""
+    if st.session_state.pop("billing_just_activated", None):
+        st.success("Pro 구독이 활성화되었습니다. 번역 무제한을 이용할 수 있습니다.")
+
+    if not billing.stripe_configured():
+        st.caption(
+            f"구독 미설정 · Secrets에 STRIPE_SECRET_KEY / STRIPE_PRICE_ID "
+            f"(상품 {billing.PRO_PRICE_LABEL}) 를 넣으면 활성화됩니다."
+        )
+        return
+
+    if auth_quota.is_pro(user):
+        st.caption(f"Pro 구독 중 · 번역 무제한 ({billing.PRO_PRICE_LABEL})")
+        customer_id = (user.get("stripe_customer_id") or "").strip()
+        if not customer_id:
+            billed = billing.get_profile_billing(user["id"])
+            customer_id = (billed.get("stripe_customer_id") or "").strip()
+            if customer_id:
+                user["stripe_customer_id"] = customer_id
+        if customer_id:
+            if st.button("구독 관리", use_container_width=True, key="btn_portal"):
+                portal = billing.create_portal_session(customer_id)
+                if portal:
+                    st.markdown(
+                        f'<meta http-equiv="refresh" content="0;url={portal}">',
+                        unsafe_allow_html=True,
+                    )
+                    st.link_button("포털로 이동", portal, use_container_width=True)
+                else:
+                    st.warning(
+                        st.session_state.get("billing_last_error")
+                        or "구독 관리 페이지를 열 수 없습니다."
+                    )
+        else:
+            st.caption("고객 ID가 없습니다. 잠시 후 새로고침해 주세요.")
+    else:
+        st.caption(f"무료 · 하루 {auth_quota.FREE_TRANSLATE_DAILY_LIMIT}건")
+        if st.button(
+            f"Pro 구독 · {billing.PRO_PRICE_LABEL}",
+            use_container_width=True,
+            type="primary",
+            key="btn_checkout",
+        ):
+            url = billing.create_checkout_session(
+                user["id"], user.get("email") or ""
+            )
+            if url:
+                st.markdown(
+                    f'<meta http-equiv="refresh" content="0;url={url}">',
+                    unsafe_allow_html=True,
+                )
+                st.link_button("결제 페이지로 이동", url, use_container_width=True)
+            else:
+                st.warning(
+                    st.session_state.get("billing_last_error")
+                    or "Checkout을 시작하지 못했습니다."
+                )
+        err = st.session_state.get("billing_last_error")
+        if err:
+            st.caption(f"결제 오류: {err}")
+
+
 def _render_auth_sidebar() -> None:
     st.markdown('<div class="sidebar-label">계정</div>', unsafe_allow_html=True)
     if not auth_quota.auth_configured():
@@ -1859,11 +1929,17 @@ def _render_auth_sidebar() -> None:
     if user:
         email = user.get("email") or user.get("id", "")
         st.caption(f"로그인 · {email}")
-        rem = _translate_quota_remaining()
-        lim = _translate_quota_limit()
-        st.caption(f"오늘 잔여: {rem}/{lim}건 (KST)")
-        if rem <= 0:
-            st.info("오늘 무료 번역 소진 · 추후 구독 시 무제한")
+        if auth_quota.is_pro(user):
+            st.caption("오늘 잔여: 무제한 (Pro)")
+        else:
+            rem = _translate_quota_remaining()
+            lim = _translate_quota_limit()
+            st.caption(f"오늘 잔여: {rem}/{lim}건 (KST)")
+            if rem <= 0:
+                st.info(
+                    f"오늘 무료 번역 소진 · Pro({billing.PRO_PRICE_LABEL}) 구독 시 무제한"
+                )
+        _render_billing_sidebar(user)
         if st.button("로그아웃", use_container_width=True, key="btn_logout"):
             auth_quota.logout()
             st.rerun()
@@ -1885,6 +1961,10 @@ def _render_auth_sidebar() -> None:
         err = st.session_state.get("auth_last_error")
         if err:
             st.caption(f"로그인 오류: {err}")
+        if billing.stripe_configured():
+            st.caption(
+                f"번역 무제한은 로그인 후 Pro({billing.PRO_PRICE_LABEL}) 구독"
+            )
 
 
 def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
@@ -1939,9 +2019,11 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     )
     st.caption(_quota_status_label())
     q_rem = _translate_quota_remaining()
-    if q_rem <= 0:
+    if q_rem <= 0 and not auth_quota.is_pro():
         if _is_logged_in():
-            st.info("오늘 무료 번역 소진 · 추후 구독 시 무제한")
+            st.info(
+                f"오늘 무료 번역 소진 · Pro({billing.PRO_PRICE_LABEL}) 구독 시 무제한"
+            )
         else:
             st.info(
                 f"세션 맛보기 소진 · Google 로그인하면 하루 "
@@ -1970,8 +2052,10 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
         if st.button("맛보기 쿼터 초기화 (테스트)", use_container_width=True):
             _translate_quota_reset()
             st.rerun()
-    else:
+    elif not auth_quota.is_pro():
         st.caption("로그인 중 · 오늘 사용량은 Supabase에 저장됩니다.")
+    else:
+        st.caption("Pro · 번역 쿼터 차감 없음(사실상 무제한)")
 
     # 3) 워치리스트
     st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
