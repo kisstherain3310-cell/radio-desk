@@ -748,7 +748,11 @@ def _resolve_article(article_id: str) -> dict[str, Any] | None:
     if cached:
         return cached
 
-    crypto_news, stock_news = fetch_all_news()
+    try:
+        crypto_news, stock_news, _health = fetch_all_news()
+    except Exception:
+        crypto_news = list(st.session_state.get("last_crypto_news") or [])
+        stock_news = list(st.session_state.get("last_stock_news") or [])
     for cat, news in (("crypto", crypto_news), ("stocks", stock_news)):
         for item in news:
             iid = str(item.get("id") or _item_id(item))
@@ -893,8 +897,8 @@ RSS_MAX_WORKERS = 8
 RSS_ENTRIES_PER_FEED = 20
 
 
-def _parse_feed_url(url: str) -> Any:
-    """Fetch RSS with hard timeout. No hang-prone feedparser URL fallback."""
+def _parse_feed_url(url: str) -> tuple[Any, bool]:
+    """Fetch RSS with hard timeout. Returns (parsed, http_ok)."""
     try:
         resp = requests.get(
             url,
@@ -902,13 +906,17 @@ def _parse_feed_url(url: str) -> Any:
             timeout=(3, RSS_TIMEOUT_SEC),  # connect, read
         )
         resp.raise_for_status()
-        return feedparser.parse(resp.content)
+        return feedparser.parse(resp.content), True
     except Exception:
-        return feedparser.parse("")
+        return feedparser.parse(""), False
 
 
-def _entries_from_feed(feed: dict[str, str]) -> list[dict[str, Any]]:
-    parsed = _parse_feed_url(feed["url"])
+def _entries_from_feed(feed: dict[str, str]) -> tuple[list[dict[str, Any]], bool]:
+    """Returns (entries, success). success=False on HTTP/network failure."""
+    parsed, http_ok = _parse_feed_url(feed["url"])
+    if not http_ok:
+        return [], False
+
     out: list[dict[str, Any]] = []
     for entry in parsed.entries[:RSS_ENTRIES_PER_FEED]:
         title = (entry.get("title") or "").strip()
@@ -925,25 +933,14 @@ def _entries_from_feed(feed: dict[str, str]) -> list[dict[str, Any]]:
                 "published_iso": published_dt.isoformat(),
             }
         )
-    return out
+    # HTTP는 성공했는데 파싱이 완전히 깨진 경우
+    if not out and getattr(parsed, "bozo", False) and not parsed.entries:
+        return [], False
+    return out, True
 
 
-def _fetch_from_feeds(feeds: list[dict[str, str]]) -> list[dict[str, Any]]:
-    """Fetch all feeds in parallel to avoid long sequential waits."""
-    items: list[dict[str, Any]] = []
-    if not feeds:
-        return []
-
-    workers = min(RSS_MAX_WORKERS, len(feeds))
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = {pool.submit(_entries_from_feed, feed): feed for feed in feeds}
-        for fut in as_completed(futures):
-            try:
-                items.extend(fut.result())
-            except Exception:
-                continue
-
-    items.sort(key=lambda x: x["published"], reverse=True)
+def _normalize_feed_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    items = sorted(items, key=lambda x: x["published"], reverse=True)
     return [
         {
             "title": i["title"],
@@ -963,24 +960,116 @@ def _fetch_from_feeds(feeds: list[dict[str, str]]) -> list[dict[str, Any]]:
     ]
 
 
+def _fetch_from_feeds(
+    feeds: list[dict[str, str]],
+) -> tuple[list[dict[str, Any]], dict[str, list[str]]]:
+    """Fetch feeds in parallel. Returns (items, {ok, fail} source names)."""
+    items: list[dict[str, Any]] = []
+    ok_sources: list[str] = []
+    fail_sources: list[str] = []
+    if not feeds:
+        return [], {"ok": [], "fail": []}
+
+    workers = min(RSS_MAX_WORKERS, len(feeds))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(_entries_from_feed, feed): feed for feed in feeds}
+        for fut in as_completed(futures):
+            feed = futures[fut]
+            src = feed["source"]
+            try:
+                entries, ok = fut.result()
+                if ok:
+                    ok_sources.append(src)
+                    items.extend(entries)
+                else:
+                    fail_sources.append(src)
+            except Exception:
+                fail_sources.append(src)
+
+    return _normalize_feed_items(items), {"ok": ok_sources, "fail": fail_sources}
+
+
 @st.cache_data(ttl=60, show_spinner=False)
 def fetch_real_crypto_news() -> list[dict[str, Any]]:
-    return _fetch_from_feeds(CRYPTO_FEEDS)
+    items, _health = _fetch_from_feeds(CRYPTO_FEEDS)
+    return items
 
 
 @st.cache_data(ttl=60, show_spinner=False)
 def fetch_real_stock_news() -> list[dict[str, Any]]:
-    return _fetch_from_feeds(STOCK_FEEDS)
+    items, _health = _fetch_from_feeds(STOCK_FEEDS)
+    return items
 
 
 @st.cache_data(ttl=60, show_spinner=False)
-def fetch_all_news() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Fetch crypto + stocks together (one cache miss, parallel inside each)."""
-    # Run both categories in parallel as well
+def fetch_all_news() -> tuple[
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    dict[str, Any],
+]:
+    """Fetch crypto + stocks together. Returns (crypto, stocks, health)."""
     with ThreadPoolExecutor(max_workers=2) as pool:
         fut_c = pool.submit(_fetch_from_feeds, CRYPTO_FEEDS)
         fut_s = pool.submit(_fetch_from_feeds, STOCK_FEEDS)
-        return fut_c.result(), fut_s.result()
+        crypto_items, crypto_h = fut_c.result()
+        stock_items, stock_h = fut_s.result()
+
+    health = {
+        "crypto_ok": crypto_h["ok"],
+        "crypto_fail": crypto_h["fail"],
+        "stocks_ok": stock_h["ok"],
+        "stocks_fail": stock_h["fail"],
+        "crypto_count": len(crypto_items),
+        "stocks_count": len(stock_items),
+    }
+    return crypto_items, stock_items, health
+
+
+def _load_news_stable() -> tuple[
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    dict[str, Any],
+    bool,
+]:
+    """
+    Fetch with session fallback to reduce blank flicker on refresh failure.
+    Returns (crypto, stocks, health, is_stale).
+    """
+    try:
+        crypto, stocks, health = fetch_all_news()
+    except Exception as exc:
+        crypto = list(st.session_state.get("last_crypto_news") or [])
+        stocks = list(st.session_state.get("last_stock_news") or [])
+        health = {
+            "crypto_ok": [],
+            "crypto_fail": [f["source"] for f in CRYPTO_FEEDS],
+            "stocks_ok": [],
+            "stocks_fail": [f["source"] for f in STOCK_FEEDS],
+            "crypto_count": len(crypto),
+            "stocks_count": len(stocks),
+            "error": str(exc),
+        }
+        return crypto, stocks, health, bool(crypto or stocks)
+
+    if crypto or stocks:
+        st.session_state["last_crypto_news"] = crypto
+        st.session_state["last_stock_news"] = stocks
+        st.session_state["last_rss_health"] = health
+        return crypto, stocks, health, False
+
+    # 이번 수집이 완전히 비었으면 직전 성공분 유지
+    prev_c = list(st.session_state.get("last_crypto_news") or [])
+    prev_s = list(st.session_state.get("last_stock_news") or [])
+    if prev_c or prev_s:
+        health = {
+            **health,
+            "crypto_count": len(prev_c),
+            "stocks_count": len(prev_s),
+            "used_fallback": True,
+        }
+        return prev_c, prev_s, health, True
+
+    return crypto, stocks, health, False
 
 
 # 무료 티어에서 gemini-2.0-flash 할당량이 0인 경우가 있어 flash-latest 사용
@@ -1527,7 +1616,10 @@ def render_feed_panel(
     )
 
     if not rows:
-        st.info("표시할 속보가 없습니다. 소스/검색/워치리스트 조건을 확인해 주세요.")
+        st.info(
+            "표시할 속보가 없습니다. "
+            "① 소스 체크 ② 검색어 ③ RSS 실패(상단 배너)를 확인해 주세요."
+        )
         return
 
     for r in rows:
@@ -1584,13 +1676,56 @@ def _translation_status_lines(
 ) -> tuple[str, bool]:
     """Return (main status text, is_warn)."""
     if not API_KEY:
-        return "번역 불가 · GEMINI_API_KEY가 없습니다 (.env 또는 Streamlit Secrets)", True
+        return (
+            "번역 불가 · API 키가 없습니다 (로컬 .env / 배포 Streamlit Secrets)",
+            True,
+        )
     if st.session_state.get("translate_circuit_open"):
-        return "번역 일시중지 · API 할당량/오류 (사이드바에서 재시도)", True
+        err = str(st.session_state.get("translate_last_error") or "").strip()
+        brief = ""
+        if err:
+            # 한 줄로 짧게
+            brief = err.replace("\n", " ")
+            if len(brief) > 80:
+                brief = brief[:77] + "…"
+            brief = f" · {brief}"
+        return (
+            f"번역 일시중지 · API 할당량/오류{brief} (사이드바에서 재시도)",
+            True,
+        )
+    err = st.session_state.get("translate_last_error")
+    if enable_translation and err and not st.session_state.get("translate_circuit_open"):
+        return "번역 ON · 최근 오류 있음 (일부는 원문만 표시될 수 있음)", True
     if not enable_translation:
         return "번역 OFF · 원문만 표시", False
     scope = "HOT/NEW" if translate_only_hot_new else "표시 항목"
     return f"번역 ON · {scope} 최대 {translate_limit}건/컬럼", False
+
+
+def _rss_status_line(health: dict[str, Any], is_stale: bool) -> str:
+    c_ok = len(health.get("crypto_ok") or [])
+    c_fail = len(health.get("crypto_fail") or [])
+    s_ok = len(health.get("stocks_ok") or [])
+    s_fail = len(health.get("stocks_fail") or [])
+    c_n = int(health.get("crypto_count") or 0)
+    s_n = int(health.get("stocks_count") or 0)
+    line = (
+        f"RSS · Crypto {c_n}건 ({c_ok}소스 성공"
+        + (f"/{c_fail}실패" if c_fail else "")
+        + f") · Stocks {s_n}건 ({s_ok}소스 성공"
+        + (f"/{s_fail}실패" if s_fail else "")
+        + ")"
+    )
+    if is_stale or health.get("used_fallback"):
+        line += " · 이전 수집분 표시 중"
+    if health.get("error"):
+        line += " · 수집 오류"
+    fails = (health.get("crypto_fail") or []) + (health.get("stocks_fail") or [])
+    if fails:
+        shown = ", ".join(fails[:4])
+        more = f" 외 {len(fails) - 4}" if len(fails) > 4 else ""
+        line += f" · 실패: {shown}{more}"
+    return line
 
 
 def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
@@ -2033,8 +2168,16 @@ def main() -> None:
 
     settings = render_title_with_hamburger(settings)
 
-    with st.spinner("속보 수집 중… (RSS 병렬 로딩)"):
-        crypto_news, stock_news = fetch_all_news()
+    has_feed_cache = bool(
+        st.session_state.get("last_crypto_news")
+        or st.session_state.get("last_stock_news")
+    )
+    if has_feed_cache:
+        # 이전 피드가 있으면 스피너 없이 갱신 → 깜빡임 완화
+        crypto_news, stock_news, rss_health, is_stale = _load_news_stable()
+    else:
+        with st.spinner("속보 수집 중… (RSS 병렬 로딩)"):
+            crypto_news, stock_news, rss_health, is_stale = _load_news_stable()
     fetched_at = datetime.now().strftime("%H:%M:%S")
 
     watchlist = settings.get("watchlist", [])
@@ -2049,15 +2192,23 @@ def main() -> None:
         translate_limit,
         translate_only_hot_new,
     )
-    warn_cls = " is-warn" if status_warn else ""
+    rss_line = _rss_status_line(rss_health, is_stale)
+    fail_n = len(rss_health.get("crypto_fail") or []) + len(
+        rss_health.get("stocks_fail") or []
+    )
+    banner_warn = status_warn or is_stale or fail_n > 0 or bool(rss_health.get("error"))
+    warn_cls = " is-warn" if banner_warn else ""
     st.markdown(
         f'<div class="status-banner{warn_cls}">'
         f"<div>{html.escape(status_text)}</div>"
-        f'<div class="status-rss">'
-        f"RSS 수집 · Crypto {len(crypto_news)} · Stocks {len(stock_news)}"
-        f"</div></div>",
+        f'<div class="status-rss">{html.escape(rss_line)}</div>'
+        f"</div>",
         unsafe_allow_html=True,
     )
+    if not crypto_news and not stock_news:
+        st.error(
+            "RSS를 가져오지 못했습니다. 네트워크·소스 상태를 확인한 뒤 잠시 후 새로고침해 주세요."
+        )
 
     crypto_rows = prepare_rows(
         crypto_news,
