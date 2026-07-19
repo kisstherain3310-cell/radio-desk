@@ -730,7 +730,8 @@ div[data-testid="stHorizontalBlock"]:has(.panel-head) > div:nth-child(2) {
   color: var(--muted);
   line-height: 1.45;
 }
-.ad-slot {  min-height: 280px;
+.ad-slot {
+  min-height: 280px;
   border: 1px dashed rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.02);
@@ -1025,33 +1026,115 @@ def _resolve_article(article_id: str) -> dict[str, Any] | None:
     return None
 
 
-def _ad_slot_html(side: str, *, compact: bool = False) -> str:
+# 광고 슬롯 → Streamlit Secrets / .env 키 (나중에 AdSense 등 HTML 붙여넣기)
+AD_SLOT_SECRET_KEYS: dict[str, str] = {
+    "home-top": "AD_HTML_HOME_TOP",
+    "crypto": "AD_HTML_CRYPTO",
+    "stocks": "AD_HTML_STOCKS",
+    "reader-left": "AD_HTML_READER_LEFT",
+    "reader-right": "AD_HTML_READER_RIGHT",
+}
+_AD_SLOT_ALIASES: dict[str, str] = {
+    "home": "home-top",
+    "home-top": "home-top",
+    "col-crypto": "crypto",
+    "crypto": "crypto",
+    "col-stocks": "stocks",
+    "stocks": "stocks",
+    "left": "reader-left",
+    "reader-left": "reader-left",
+    "right": "reader-right",
+    "reader-right": "reader-right",
+}
+
+
+def _load_config_str(name: str) -> str:
+    """Streamlit Secrets 우선, 없으면 .env / 환경변수."""
+    try:
+        if name in st.secrets:
+            return str(st.secrets[name]).strip()
+    except Exception:
+        pass
+    load_dotenv(Path(__file__).resolve().parent / ".env")
+    return os.getenv(name, "").strip()
+
+
+def _resolve_ad_slot_key(slot_id: str) -> str:
+    return _AD_SLOT_ALIASES.get(slot_id.strip().lower(), slot_id.strip().lower())
+
+
+def _ad_html_for_slot(slot_key: str) -> str:
+    secret_name = AD_SLOT_SECRET_KEYS.get(slot_key)
+    if not secret_name:
+        return ""
+    return _load_config_str(secret_name)
+
+
+def _ad_slot_placeholder_html(label: str, *, compact: bool = False) -> str:
     note = (
-        "프로토타입 슬롯 · 배포 시 광고 코드 연결"
+        "프로토타입 슬롯 · Secrets에 AD_HTML_* 연결"
         if compact
-        else "프로토타입 슬롯<br/>배포 시 광고 코드 연결"
+        else "프로토타입 슬롯<br/>Secrets에 AD_HTML_* 를 넣으면 여기에 표시됩니다"
     )
     return (
-        f'<div class="ad-slot" data-ad-slot="{html.escape(side)}" '
+        f'<div class="ad-slot" data-ad-slot="{html.escape(label)}" '
         f'aria-label="광고 영역">'
-        f'<div class="ad-label">Ad · {html.escape(side)}</div>'
+        f'<div class="ad-label">Ad · {html.escape(label)}</div>'
         f'<div class="ad-note">{note}</div>'
         f"</div>"
     )
 
 
-def _render_home_ad(slot_id: str, label: str) -> None:
+def _ad_iframe_height(slot_key: str, *, compact: bool) -> int:
+    if slot_key in ("reader-left", "reader-right"):
+        return 280
+    if slot_key == "home-top":
+        return 100
+    return 90 if compact else 100
+
+
+def _render_ad_slot(
+    slot_id: str,
+    label: str,
+    *,
+    compact: bool = False,
+    wrap_class: str = "",
+) -> None:
+    """
+    Secrets HTML이 있으면 components.html 로 렌더, 없으면 플레이스홀더.
+    60초 자동갱신과 별도 광고 강제 리프레시는 하지 않음.
+    """
     if not _show_ads():
         return
-    wrap = "home-ad-banner" if slot_id == "home-top" else ""
-    html_block = _ad_slot_html(label, compact=(slot_id != "home-top"))
-    if wrap:
+    slot_key = _resolve_ad_slot_key(slot_id)
+    custom = _ad_html_for_slot(slot_key)
+    if custom:
+        # components.html 은 별도 iframe — 자동갱신과 광고만 강제 리프레시하지 않음
+        components.html(
+            custom,
+            height=_ad_iframe_height(slot_key, compact=compact),
+            scrolling=False,
+        )
+        return
+
+    html_block = _ad_slot_placeholder_html(label, compact=compact)
+    if wrap_class:
         st.markdown(
-            f'<div class="{wrap}">{html_block}</div>',
+            f'<div class="{html.escape(wrap_class)}">{html_block}</div>',
             unsafe_allow_html=True,
         )
     else:
         st.markdown(html_block, unsafe_allow_html=True)
+
+
+def _render_home_ad(slot_id: str, label: str) -> None:
+    wrap = "home-ad-banner" if _resolve_ad_slot_key(slot_id) == "home-top" else ""
+    _render_ad_slot(
+        slot_id,
+        label,
+        compact=(_resolve_ad_slot_key(slot_id) != "home-top"),
+        wrap_class=wrap,
+    )
 
 
 def render_reader_page(article: dict[str, Any]) -> None:
@@ -1079,7 +1162,7 @@ def render_reader_page(article: dict[str, Any]) -> None:
     left, center, right = st.columns([1, 2.4, 1], gap="medium")
     with left:
         if show_ads:
-            st.markdown(_ad_slot_html("Left"), unsafe_allow_html=True)
+            _render_ad_slot("reader-left", "Left")
     with center:
         st.markdown(
             '<div class="reader-kicker">라디오 데스크 · 읽기</div>',
@@ -1135,7 +1218,7 @@ def render_reader_page(article: dict[str, Any]) -> None:
         )
     with right:
         if show_ads:
-            st.markdown(_ad_slot_html("Right"), unsafe_allow_html=True)
+            _render_ad_slot("reader-right", "Right")
 
 
 # ---------------------------------------------------------------------------
@@ -2240,32 +2323,60 @@ def render_feed_panel_body(
     st.markdown(cards, unsafe_allow_html=True)
 
 
+def _load_x_bearer_token() -> str:
+    """X API Bearer Token (Secrets / .env). 없으면 빈 문자열."""
+    return _load_config_str("X_BEARER_TOKEN")
+
+
+def fetch_signals_feed() -> list[dict[str, Any]]:
+    """
+    X 인플루언서·시그널 피드 훅.
+    토큰이 없거나 아직 미구현이면 빈 목록 (실 API 호출 없음).
+    """
+    token = _load_x_bearer_token()
+    if not token:
+        return []
+    # 이후 스프린트: X API로 타임라인 수집 후 카드 형태로 반환
+    _ = token
+    return []
+
+
 def _render_signals_teaser() -> None:
-    """Phase 2 X·시그널 자리 — 출시 예정 (개인 운영 시 구독 CTA 없음)."""
+    """SIGNALS 영역 — 실데이터 없으면 출시 예정 티저."""
     st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+
+    signals = fetch_signals_feed()
+    if signals:
+        # 이후: 실피드 카드 렌더
+        return
+
+    # 개인 무료 모드: 구독 CTA 없이 준비 중 안내만
     if not billing.pro_billing_enabled():
         st.markdown(
             '<div class="signals-teaser">'
             "<div class=\"signals-kicker\">SIGNALS · 출시 예정</div>"
             "<div class=\"signals-title\">X 인플루언서·시그널 속보</div>"
             "<div class=\"signals-body\">"
-            "준비되는 대로 이 영역에 표시됩니다. "
-            "지금은 검증된 매체 RSS 속보를 이용해 주세요."
+            "X 인플루언서·시그널은 준비 중입니다. "
+            "지금은 위쪽 CRYPTO · STOCKS 매체 RSS 속보를 이용해 주세요."
             "</div></div>",
             unsafe_allow_html=True,
         )
         return
+
+    # (보관) Pro 빌링 ON 일 때만 아래 분기 사용
     if auth_quota.is_pro():
         st.markdown(
             '<div class="signals-teaser is-pro">'
             "<div class=\"signals-kicker\">SIGNALS · Pro</div>"
             "<div class=\"signals-title\">X 인플루언서·시그널 속보</div>"
             "<div class=\"signals-body\">"
-            "출시 예정 피드를 우선 제공합니다. 준비되는 대로 이 영역에 표시됩니다."
+            "시그널 피드는 준비 중입니다. 연결되는 대로 이 영역에 표시됩니다."
             "</div></div>",
             unsafe_allow_html=True,
         )
         return
+
     st.markdown(
         '<div class="signals-teaser">'
         "<div class=\"signals-kicker\">SIGNALS · Locked</div>"
@@ -2277,10 +2388,6 @@ def _render_signals_teaser() -> None:
         "</div></div>",
         unsafe_allow_html=True,
     )
-    if _is_logged_in() and billing.toss_configured():
-        st.caption("사이드바에서 Pro 카드 등록으로 잠금 해제할 수 있습니다.")
-    elif not _is_logged_in() and auth_quota.auth_configured():
-        st.caption("Google 로그인 후 Pro를 구독할 수 있습니다. (사이드바)")
 
 
 def _update_seen_and_alerts(

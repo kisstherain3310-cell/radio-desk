@@ -37,7 +37,18 @@
 # 개인 운영 · 결제 미사용 — 이것만으로 RSS·번역 동작
 GEMINI_API_KEY = "여기에_제미나이_키"
 
-# --- 향후용 (지금은 넣지 않음) ---
+# --- 광고 HTML (선택 · 나중에 붙여넣기) ---
+# 비우면 프로토타입 슬롯이 보입니다. 멀티라인이면 ''' ... ''' 사용.
+# AD_HTML_HOME_TOP = '''<ins class="adsbygoogle" ...></ins><script>...</script>'''
+# AD_HTML_CRYPTO = '''...'''
+# AD_HTML_STOCKS = '''...'''
+# AD_HTML_READER_LEFT = '''...'''
+# AD_HTML_READER_RIGHT = '''...'''
+
+# --- SIGNALS (이후 · X API 준비되면) ---
+# X_BEARER_TOKEN = "AAAA..."
+
+# --- 향후용 Pro (지금은 넣지 않음) ---
 # Google 로그인 / Pro 결제용. ENABLE_PRO_BILLING=True 일 때만 의미 있음
 # SUPABASE_URL = "https://xxxx.supabase.co"
 # SUPABASE_ANON_KEY = "여기에_anon_public_key"
@@ -57,9 +68,9 @@ GEMINI_API_KEY = "여기에_제미나이_키"
 | 구분 | 내용 |
 |------|------|
 | **무료** | 검증된 매체 RSS (CRYPTO/STOCKS). 영어는 브라우저 주소창 번역 안내 |
-| **광고** | 홈 슬롯 3곳 + 읽기 페이지 좌·우 (프로토타입 슬롯) |
+| **광고** | 홈 슬롯 3곳 + 읽기 좌·우. Secrets `AD_HTML_*` 있으면 렌더, 없으면 프로토타입 |
 | **로그인·결제** | 사용하지 않음 (`ENABLE_PRO_BILLING = False`) |
-| **SIGNALS** | 출시 예정 안내만 (구독 CTA 없음) |
+| **SIGNALS** | 출시 예정 티저. `X_BEARER_TOKEN` 연동은 **이후 스프린트** |
 
 매체 RSS 번역은 무료 편의 기능입니다. 남용 방지를 위한 숨은 일일 soft cap(세션, 약 2,000건)만 있으며 UI에 표시하지 않습니다.
 
@@ -148,10 +159,11 @@ Streamlit Cloud에는 크론이 없으므로, **접속/로그인 시 `next_billi
 
 ### 5-4) Phase 2 — X 인플루언서·시그널 피드 (별도 착수)
 
-현재는 **출시 예정** 안내만 제공합니다. 다음 스프린트에서:
+현재는 **출시 예정** 티저만 제공합니다. 코드에 `_load_x_bearer_token()` / `fetch_signals_feed()` 훅만 두었고, **실 API 호출은 하지 않습니다.**  
+`X_BEARER_TOKEN`과 유료 X 개발자 플랜이 준비되면 다음 스프린트에서:
 
-1. X API(또는 허용된 수집)로 인플루언서 타임라인 수집 — Secrets 예: `X_BEARER_TOKEN`
-2. `SIGNALS` 피드/탭 — 실데이터 표시
+1. X API로 인플루언서 타임라인 수집 — Secrets: `X_BEARER_TOKEN`
+2. `fetch_signals_feed()`에서 실데이터 반환 → 하단 SIGNALS 영역에 카드 표시
 3. 번역·카드 UI는 기존 RSS 파이프라인 재사용
 4. 이 문서에 수집 계정 목록·할당량·약관 준수 체크리스트 추가
 
@@ -176,11 +188,21 @@ Streamlit Cloud에는 크론이 없으므로, **접속/로그인 시 `next_billi
 - [ ] **원문 보기**만 외부로 이동 · **목록으로** 복귀
 - [ ] 60초 자동갱신과 광고 강제 리프레시를 연동하지 않았는가
 
-### 광고 네트워크 연동 시 (나중)
+### 광고 네트워크 연동 시 (Secrets `AD_HTML_*`)
 
-- [ ] 우리 도메인 페이지에만 광고 코드 (`data-ad-slot` 훅 활용)
+슬롯 키:
+
+| Secrets 키 | 위치 |
+|------------|------|
+| `AD_HTML_HOME_TOP` | 홈 상단 (배너 아래) |
+| `AD_HTML_CRYPTO` | CRYPTO 열 상단 |
+| `AD_HTML_STOCKS` | STOCKS 열 상단 |
+| `AD_HTML_READER_LEFT` | 읽기 페이지 왼쪽 |
+| `AD_HTML_READER_RIGHT` | 읽기 페이지 오른쪽 |
+
+- [ ] 우리 도메인 페이지에만 광고 코드 삽입
 - [ ] 원문 iframe + 주변 광고 금지
-- [ ] 자동갱신과 광고 리프레시 연동 금지
+- [ ] 자동갱신과 광고 강제 리프레시 연동 금지 (앱은 슬롯 HTML만 렌더)
 
 ## 7) 코드 수정 후 반영
 
