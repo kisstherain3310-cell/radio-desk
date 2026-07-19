@@ -1047,6 +1047,19 @@ _AD_SLOT_ALIASES: dict[str, str] = {
     "reader-right": "reader-right",
 }
 
+# Secrets/환경변수가 비어 있을 때 쓰는 기본 광고 HTML (쿠팡파트너스)
+_DEFAULT_AD_HTML: dict[str, str] = {
+    "home-top": """
+<div style="font-size:11px;color:#888;margin:0 0 6px 0;line-height:1.4;">
+이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.
+</div>
+<script src="https://ads-partners.coupang.com/g.js"></script>
+<script>
+new PartnersCoupang.G({"id":1008366,"template":"carousel","trackingCode":"AF8699199","width":"680","height":"120","tsource":""});
+</script>
+""".strip(),
+}
+
 
 def _load_config_str(name: str) -> str:
     """Streamlit Secrets 우선, 없으면 .env / 환경변수."""
@@ -1064,10 +1077,13 @@ def _resolve_ad_slot_key(slot_id: str) -> str:
 
 
 def _ad_html_for_slot(slot_key: str) -> str:
+    """Secrets → 환경변수 → 코드 기본값 순."""
     secret_name = AD_SLOT_SECRET_KEYS.get(slot_key)
-    if not secret_name:
-        return ""
-    return _load_config_str(secret_name)
+    if secret_name:
+        custom = _load_config_str(secret_name)
+        if custom:
+            return custom
+    return _DEFAULT_AD_HTML.get(slot_key, "")
 
 
 def _ad_slot_placeholder_html(label: str, *, compact: bool = False) -> str:
@@ -1089,7 +1105,7 @@ def _ad_iframe_height(slot_key: str, *, compact: bool) -> int:
     if slot_key in ("reader-left", "reader-right"):
         return 280
     if slot_key == "home-top":
-        return 100
+        return 160  # 고지 문구 + 쿠팡 캐러셀(120)
     return 90 if compact else 100
 
 
