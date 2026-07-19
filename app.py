@@ -709,13 +709,17 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker)
   margin-bottom: 0.15rem !important;
 }
 
-/* 피드 2열만 구분선 (헤더 햄버거 행 제외) */
-div[data-testid="stHorizontalBlock"]:has(.panel-head) > div:nth-child(1) {
-  border-right: 1px solid var(--line);
-  padding-right: 0.75rem !important;
-}
-div[data-testid="stHorizontalBlock"]:has(.panel-head) > div:nth-child(2) {
-  padding-left: 0.75rem !important;
+/* 피드 2열만 구분선 (헤더 햄버거 행 제외) — 데스크톱 */
+@media (min-width: 769px) {
+  div[data-testid="stHorizontalBlock"]:has(.panel-head) > div:nth-child(1),
+  div[data-testid="stHorizontalBlock"]:has(.feed-body-anchor) > div:nth-child(1) {
+    border-right: 1px solid var(--line);
+    padding-right: 0.75rem !important;
+  }
+  div[data-testid="stHorizontalBlock"]:has(.panel-head) > div:nth-child(2),
+  div[data-testid="stHorizontalBlock"]:has(.feed-body-anchor) > div:nth-child(2) {
+    padding-left: 0.75rem !important;
+  }
 }
 
 /* ---- Reader page (prototype) ---- */
@@ -845,8 +849,127 @@ section.stMain div.stButton > button[data-testid="baseButton-secondary"]:hover {
   color: #ffffff !important;
   border-color: rgba(255, 255, 255, 0.24) !important;
 }
-@media (max-width: 900px) {
-  .ad-slot { min-height: 100px; margin-bottom: 0.75rem; }
+/* ---- Mobile / phone ---- */
+@media (max-width: 768px) {
+  .block-container {
+    padding: 0.45rem 0.65rem 1.1rem 0.65rem !important;
+  }
+  a.rd-brand-home {
+    font-size: 1.28rem;
+  }
+  .rd-brand-sub { font-size: 0.7rem; }
+  .rd-brand-hint { font-size: 0.72rem; margin-bottom: 0.4rem; }
+  .panel-title { font-size: 1.05rem; }
+  .panel-meta {
+    font-size: 0.68rem;
+    white-space: normal;
+    overflow: visible;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .feed-meta {
+    font-size: 0.68rem;
+    line-height: 1.45;
+    white-space: normal;
+  }
+  .news-item { padding: 0.65rem 0.15rem; }
+  .headline-en, .headline-en a { font-size: 0.92rem; }
+  .reader-title { font-size: 1.15rem; }
+  .ad-slot { min-height: 88px; margin-bottom: 0.55rem; }
+  .signals-teaser { padding: 0.8rem 0.85rem; }
+  .global-feed-sub { font-size: 0.68rem; }
+
+  /* 로고 행은 가로 유지 */
+  section.stMain div[data-testid="stHorizontalBlock"]:has(.rd-brand-home) {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+  }
+  section.stMain div[data-testid="stHorizontalBlock"]:has(.rd-brand-home)
+    > div[data-testid="stColumn"] {
+    width: auto !important;
+    flex: unset !important;
+    min-width: 0 !important;
+  }
+  section.stMain div[data-testid="stHorizontalBlock"]:has(.rd-brand-home)
+    > div[data-testid="stColumn"]:first-child {
+    flex: 0 0 2.6rem !important;
+    width: 2.6rem !important;
+  }
+  section.stMain div[data-testid="stHorizontalBlock"]:has(.rd-brand-home)
+    > div[data-testid="stColumn"]:last-child {
+    flex: 1 1 auto !important;
+  }
+
+  /* CRYPTO/STOCKS·필터·피드·읽기 CTA 등은 세로 스택 */
+  section.stMain div[data-testid="stHorizontalBlock"]:has(.panel-head),
+  section.stMain div[data-testid="stHorizontalBlock"]:has(.feed-body-anchor),
+  section.stMain div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker)
+    div[data-testid="stHorizontalBlock"],
+  section.stMain div[data-testid="stHorizontalBlock"]:has(.reader-kicker) {
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    gap: 0.65rem !important;
+  }
+  section.stMain div[data-testid="stHorizontalBlock"]:has(.panel-head)
+    > div[data-testid="stColumn"],
+  section.stMain div[data-testid="stHorizontalBlock"]:has(.feed-body-anchor)
+    > div[data-testid="stColumn"],
+  section.stMain div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker)
+    div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"],
+  section.stMain div[data-testid="stHorizontalBlock"]:has(.reader-kicker)
+    > div[data-testid="stColumn"] {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* 2열 구분선 → 가로 구분선 */
+  div[data-testid="stHorizontalBlock"]:has(.panel-head) > div:nth-child(1),
+  div[data-testid="stHorizontalBlock"]:has(.feed-body-anchor) > div:nth-child(1) {
+    border-right: none !important;
+    padding-right: 0 !important;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0.85rem !important;
+    margin-bottom: 0.15rem;
+  }
+  div[data-testid="stHorizontalBlock"]:has(.panel-head) > div:nth-child(2),
+  div[data-testid="stHorizontalBlock"]:has(.feed-body-anchor) > div:nth-child(2) {
+    padding-left: 0 !important;
+    padding-top: 0.25rem !important;
+  }
+
+  /* 읽기: 본문 먼저, 광고는 아래 */
+  section.stMain div[data-testid="stHorizontalBlock"]:has(.reader-kicker)
+    > div[data-testid="stColumn"]:nth-child(1) {
+    order: 2;
+  }
+  section.stMain div[data-testid="stHorizontalBlock"]:has(.reader-kicker)
+    > div[data-testid="stColumn"]:nth-child(2) {
+    order: 1;
+  }
+  section.stMain div[data-testid="stHorizontalBlock"]:has(.reader-kicker)
+    > div[data-testid="stColumn"]:nth-child(3) {
+    order: 3;
+  }
+
+  /* 패널 안 정렬·키워드도 세로로 */
+  section.stMain div[data-testid="stColumn"]:has(.feed-body-anchor)
+    div[data-testid="stHorizontalBlock"] {
+    flex-direction: column !important;
+  }
+  section.stMain div[data-testid="stColumn"]:has(.feed-body-anchor)
+    div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    min-width: 100% !important;
+  }
+
+  /* 광고 iframe이 화면 밖으로 넘치지 않게 */
+  section.stMain iframe {
+    max-width: 100% !important;
+  }
 }
 </style>
 """
@@ -2417,6 +2540,10 @@ def render_feed_panel_body(
     category: Category = "crypto",
 ) -> None:
     """정렬·키워드·피드 본문."""
+    st.markdown(
+        '<div class="feed-body-anchor" aria-hidden="true"></div>',
+        unsafe_allow_html=True,
+    )
     _render_feed_toolbar(
         st.session_state.settings,
         panel="crypto" if category == "crypto" else "stocks",
@@ -3090,7 +3217,8 @@ def main() -> None:
         page_title="라디오 데스크 · Market News Terminal",
         page_icon="◈",
         layout="wide",
-        initial_sidebar_state="expanded",
+        # auto: 데스크톱은 펼침, 모바일은 접혀 본문 폭 확보
+        initial_sidebar_state="auto",
     )
     init_session_settings()
     auth_quota.init_auth()
