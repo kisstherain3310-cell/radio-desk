@@ -1047,17 +1047,30 @@ _AD_SLOT_ALIASES: dict[str, str] = {
     "reader-right": "reader-right",
 }
 
+def _coupang_banner_html(width: int, height: int) -> str:
+    """쿠팡파트너스 다이나믹 배너 HTML (고지 문구 포함)."""
+    return (
+        '<div style="font-size:10px;color:#888;margin:0 0 4px 0;line-height:1.35;">'
+        "이 포스팅은 쿠팡 파트너스 활동의 일환으로, "
+        "이에 따른 일정액의 수수료를 제공받습니다."
+        "</div>\n"
+        '<script src="https://ads-partners.coupang.com/g.js"></script>\n'
+        "<script>\n"
+        "new PartnersCoupang.G("
+        f'{{"id":1008366,"template":"carousel","trackingCode":"AF8699199",'
+        f'"width":"{width}","height":"{height}","tsource":""}}'
+        ");\n"
+        "</script>"
+    )
+
+
 # Secrets/환경변수가 비어 있을 때 쓰는 기본 광고 HTML (쿠팡파트너스)
 _DEFAULT_AD_HTML: dict[str, str] = {
-    "home-top": """
-<div style="font-size:11px;color:#888;margin:0 0 6px 0;line-height:1.4;">
-이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.
-</div>
-<script src="https://ads-partners.coupang.com/g.js"></script>
-<script>
-new PartnersCoupang.G({"id":1008366,"template":"carousel","trackingCode":"AF8699199","width":"680","height":"120","tsource":""});
-</script>
-""".strip(),
+    "home-top": _coupang_banner_html(680, 120),
+    "crypto": _coupang_banner_html(320, 100),
+    "stocks": _coupang_banner_html(320, 100),
+    "reader-left": _coupang_banner_html(160, 250),
+    "reader-right": _coupang_banner_html(160, 250),
 }
 
 
@@ -1103,9 +1116,11 @@ def _ad_slot_placeholder_html(label: str, *, compact: bool = False) -> str:
 
 def _ad_iframe_height(slot_key: str, *, compact: bool) -> int:
     if slot_key in ("reader-left", "reader-right"):
-        return 280
+        return 300  # 고지 + 세로형 배너
     if slot_key == "home-top":
-        return 160  # 고지 문구 + 쿠팡 캐러셀(120)
+        return 160  # 고지 + 캐러셀(120)
+    if slot_key in ("crypto", "stocks"):
+        return 130  # 고지 + 열 상단 배너
     return 90 if compact else 100
 
 
