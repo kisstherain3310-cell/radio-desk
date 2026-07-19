@@ -801,6 +801,19 @@ div[data-testid="stHorizontalBlock"]:has(.panel-head) > div:nth-child(2) {
   flex-wrap: wrap;
   margin-bottom: 0.75rem;
 }
+/* 목록으로 등 secondary — 흰/연회색 기본 대신 hover 톤을 기본으로 */
+section.stMain div.stButton > button[kind="secondary"],
+section.stMain div.stButton > button[data-testid="baseButton-secondary"] {
+  background-color: #2a2e36 !important;
+  color: #f3f5f9 !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+}
+section.stMain div.stButton > button[kind="secondary"]:hover,
+section.stMain div.stButton > button[data-testid="baseButton-secondary"]:hover {
+  background-color: #363b46 !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.24) !important;
+}
 @media (max-width: 900px) {
   .ad-slot { min-height: 100px; margin-bottom: 0.75rem; }
 }
