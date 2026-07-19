@@ -3015,7 +3015,7 @@ def _render_brand_header() -> None:
             </span>
           </button>
           <div class="brand-text">
-            <a class="app-title app-title-link" href="/" target="_parent" title="홈으로">라디오 데스크</a>
+            <a class="app-title app-title-link" id="brand-home-link" href="/" title="목록으로">라디오 데스크</a>
             <div class="app-subtitle">Market News Terminal</div>
             <div class="app-sub">검증 매체 속보 · 영어는 주소창 오른쪽 번역</div>
           </div>
@@ -3026,6 +3026,20 @@ def _render_brand_header() -> None:
             const frame = window.frameElement;
             if (frame) frame.setAttribute('title', 'radio-desk-brand');
           } catch (e) {}
+          function goHomeList(e) {
+            if (e) e.preventDefault();
+            try {
+              const parentWin = window.parent;
+              const url = new URL(parentWin.location.href);
+              url.search = '';
+              url.hash = '';
+              parentWin.location.assign(url.toString());
+            } catch (err) {
+              try { window.top.location.assign('/'); } catch (e2) {}
+            }
+          }
+          const homeLink = document.getElementById('brand-home-link');
+          if (homeLink) homeLink.addEventListener('click', goHomeList);
           function openSidebar() {
             const doc = window.parent.document;
             const selectors = [
