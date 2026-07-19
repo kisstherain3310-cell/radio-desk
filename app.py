@@ -1064,10 +1064,35 @@ def _coupang_banner_html(width: int, height: int) -> str:
     )
 
 
+def _coupang_banner_html_custom(
+    banner_id: int,
+    width: int,
+    height: int,
+    *,
+    tracking: str = "AF8699199",
+    template: str = "carousel",
+) -> str:
+    """배너 id·크기가 다른 쿠팡 파트너스 HTML."""
+    return (
+        '<div style="font-size:10px;color:#888;margin:0 0 4px 0;line-height:1.35;">'
+        "이 포스팅은 쿠팡 파트너스 활동의 일환으로, "
+        "이에 따른 일정액의 수수료를 제공받습니다."
+        "</div>\n"
+        '<script src="https://ads-partners.coupang.com/g.js"></script>\n'
+        "<script>\n"
+        "new PartnersCoupang.G("
+        f'{{"id":{banner_id},"template":"{template}","trackingCode":"{tracking}",'
+        f'"width":"{width}","height":"{height}","tsource":""}}'
+        ");\n"
+        "</script>"
+    )
+
+
 # Secrets/환경변수가 비어 있을 때 쓰는 기본 광고 HTML (쿠팡파트너스)
 _DEFAULT_AD_HTML: dict[str, str] = {
     "home-top": _coupang_banner_html(680, 120),
-    "crypto": _coupang_banner_html(320, 100),
+    # CRYPTO 열 전용 배너 (id 1008369)
+    "crypto": _coupang_banner_html_custom(1008369, 350, 100),
     "stocks": _coupang_banner_html(320, 100),
     "reader-left": _coupang_banner_html(160, 250),
     "reader-right": _coupang_banner_html(160, 250),
