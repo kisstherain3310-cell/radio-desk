@@ -1091,10 +1091,11 @@ def _coupang_banner_html_custom(
 # Secrets/환경변수가 비어 있을 때 쓰는 기본 광고 HTML (쿠팡파트너스)
 _DEFAULT_AD_HTML: dict[str, str] = {
     "home-top": _coupang_banner_html(680, 120),
-    # CRYPTO 열 전용 배너 (id 1008369)
-    "crypto": _coupang_banner_html_custom(1008369, 350, 100),
-    "stocks": _coupang_banner_html(320, 100),
-    "reader-left": _coupang_banner_html(160, 250),
+    "crypto": _coupang_banner_html(320, 100),
+    # STOCKS 열 전용 배너 (id 1008369)
+    "stocks": _coupang_banner_html_custom(1008369, 350, 100),
+    # 읽기 왼쪽 세로형 (id 1008369)
+    "reader-left": _coupang_banner_html_custom(1008369, 120, 400),
     "reader-right": _coupang_banner_html(160, 250),
 }
 
@@ -1140,7 +1141,9 @@ def _ad_slot_placeholder_html(label: str, *, compact: bool = False) -> str:
 
 
 def _ad_iframe_height(slot_key: str, *, compact: bool) -> int:
-    if slot_key in ("reader-left", "reader-right"):
+    if slot_key == "reader-left":
+        return 430  # 고지 + 120x400
+    if slot_key == "reader-right":
         return 300  # 고지 + 세로형 배너
     if slot_key == "home-top":
         return 160  # 고지 + 캐러셀(120)
