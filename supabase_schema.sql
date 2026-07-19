@@ -1,18 +1,25 @@
 -- 라디오 데스크 — Supabase 스키마 (SQL Editor에서 실행)
--- Google 로그인 + 일일 번역 쿼터 + Stripe 구독(plan)
+-- Google 로그인 + 토스페이먼츠 빌링(plan) + 일일 사용량 테이블
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text,
   plan text not null default 'free',
+  toss_customer_key text,
+  toss_billing_key text,
+  next_billing_at timestamptz,
+  -- legacy (미사용)
   stripe_customer_id text,
   stripe_subscription_id text,
   created_at timestamptz not null default now()
 );
 
--- 기존 프로젝트 마이그레이션
+-- 마이그레이션
 alter table public.profiles add column if not exists stripe_customer_id text;
 alter table public.profiles add column if not exists stripe_subscription_id text;
+alter table public.profiles add column if not exists toss_customer_key text;
+alter table public.profiles add column if not exists toss_billing_key text;
+alter table public.profiles add column if not exists next_billing_at timestamptz;
 
 create table if not exists public.translate_usage (
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -35,11 +42,12 @@ create policy "profiles_insert_own"
   with check (
     auth.uid() = id
     and coalesce(plan, 'free') = 'free'
+    and toss_billing_key is null
     and stripe_customer_id is null
     and stripe_subscription_id is null
   );
 
--- 이메일은 본인이 갱신 가능. plan/stripe는 트리거로 보호
+-- 이메일은 본인이 갱신 가능. plan/빌링 필드는 트리거로 보호
 drop policy if exists "profiles_update_own" on public.profiles;
 create policy "profiles_update_own"
   on public.profiles for update
@@ -51,11 +59,14 @@ returns trigger
 language plpgsql
 as $$
 begin
-  -- service_role 은 Stripe 동기화용으로 plan/stripe 변경 허용
+  -- service_role 은 토스 동기화용으로 plan/빌링 필드 변경 허용
   if coalesce(auth.role(), '') = 'service_role' then
     return new;
   end if;
   new.plan := old.plan;
+  new.toss_customer_key := old.toss_customer_key;
+  new.toss_billing_key := old.toss_billing_key;
+  new.next_billing_at := old.next_billing_at;
   new.stripe_customer_id := old.stripe_customer_id;
   new.stripe_subscription_id := old.stripe_subscription_id;
   return new;

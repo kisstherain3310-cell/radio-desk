@@ -133,7 +133,7 @@ def _user_from_supabase_user(user: Any) -> dict[str, Any] | None:
 
 
 def _ensure_profile(client, user: dict[str, Any]) -> None:
-    """plan/stripe 는 덮어쓰지 않음 (이메일만 upsert)."""
+    """plan/빌링 필드는 덮어쓰지 않음 (이메일만 upsert)."""
     try:
         client.table("profiles").upsert(
             {
@@ -150,7 +150,7 @@ def _load_profile_row(client, user: dict[str, Any]) -> dict[str, Any]:
     try:
         res = (
             client.table("profiles")
-            .select("plan, stripe_customer_id, stripe_subscription_id")
+            .select("plan, toss_customer_key, next_billing_at")
             .eq("id", user["id"])
             .maybe_single()
             .execute()
@@ -160,26 +160,33 @@ def _load_profile_row(client, user: dict[str, Any]) -> dict[str, Any]:
         return {}
 
 
-def _load_plan(client, user: dict[str, Any], *, sync_stripe: bool = True) -> str:
+def _load_plan(client, user: dict[str, Any], *, sync_billing: bool = True) -> str:
     data = _load_profile_row(client, user)
     plan = (data.get("plan") or "free").strip().lower()
     if plan not in ("free", "pro"):
         plan = "free"
 
-    if sync_stripe and billing.stripe_configured():
+    if (
+        sync_billing
+        and billing.pro_billing_enabled()
+        and billing.toss_configured()
+    ):
         try:
             plan = billing.sync_subscription(user["id"], force=False)
         except Exception:
             pass
 
     user["plan"] = plan
-    user["stripe_customer_id"] = data.get("stripe_customer_id") or user.get(
-        "stripe_customer_id"
+    user["toss_customer_key"] = data.get("toss_customer_key") or user.get(
+        "toss_customer_key"
     )
-    # sync 후 최신 customer id
-    billed = billing.get_profile_billing(user["id"]) if billing.service_role_configured() else {}
-    if billed.get("stripe_customer_id"):
-        user["stripe_customer_id"] = billed.get("stripe_customer_id")
+    billed = (
+        billing.get_profile_billing(user["id"])
+        if billing.service_role_configured()
+        else {}
+    )
+    if billed.get("toss_customer_key"):
+        user["toss_customer_key"] = billed.get("toss_customer_key")
     if billed.get("plan") in ("free", "pro"):
         user["plan"] = billed["plan"]
         plan = billed["plan"]
@@ -375,6 +382,8 @@ def get_daily_used() -> int:
 
 
 def is_pro(user: dict[str, Any] | None = None) -> bool:
+    if not billing.pro_billing_enabled():
+        return False
     u = user if user is not None else get_current_user()
     return bool(u and (u.get("plan") or "free").lower() == "pro")
 
@@ -438,21 +447,21 @@ def consume_daily(n: int) -> int:
 
 
 def init_auth() -> None:
-    """매 런 시작 시: OAuth 콜백 + 세션 복원 + Checkout 처리."""
+    """매 런 시작 시: OAuth 콜백 + 세션 복원 + (활성 시) 토스 빌링 콜백."""
     if not auth_configured():
         return
+    billing_on = billing.pro_billing_enabled()
     if exchange_code_from_query():
         user = get_current_user()
-        if user:
-            billing.handle_checkout_query(user["id"])
+        if user and billing_on:
+            billing.handle_toss_query(user["id"], user.get("email"))
         return
     if st.session_state.get(_SESSION_ACCESS) and not st.session_state.get(_SESSION_USER):
         get_current_user()
     user = st.session_state.get(_SESSION_USER)
-    if user:
-        billing.handle_checkout_query(user.get("id"))
-        # 주기적 구독 동기화 (TTL은 billing 내부)
-        if billing.stripe_configured():
+    if user and billing_on:
+        billing.handle_toss_query(user.get("id"), user.get("email"))
+        if billing.toss_configured():
             try:
                 plan = billing.sync_subscription(user["id"], force=False)
                 user["plan"] = plan

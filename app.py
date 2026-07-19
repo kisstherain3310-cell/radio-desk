@@ -50,25 +50,47 @@ API_KEY = _load_gemini_api_key()
 Category = Literal["crypto", "stocks"]
 DisplayMode = Literal["both", "en", "ko"]
 
+# region: overseas = 해외 매체, domestic = 국내 매체
 CRYPTO_FEEDS = [
-    {"source": "CoinDesk", "url": "https://www.coindesk.com/arc/outboundfeeds/rss/"},
-    {"source": "Cointelegraph", "url": "https://cointelegraph.com/rss"},
-    {"source": "Decrypt", "url": "https://decrypt.co/feed"},
-    {"source": "The Block", "url": "https://www.theblock.co/rss.xml"},
-    {"source": "Bitcoin Magazine", "url": "https://bitcoinmagazine.com/feed"},
-    {"source": "Blockworks", "url": "https://blockworks.co/feed"},
+    {"source": "CoinDesk", "url": "https://www.coindesk.com/arc/outboundfeeds/rss/", "region": "overseas"},
+    {"source": "Cointelegraph", "url": "https://cointelegraph.com/rss", "region": "overseas"},
+    {"source": "Decrypt", "url": "https://decrypt.co/feed", "region": "overseas"},
+    {"source": "The Block", "url": "https://www.theblock.co/rss.xml", "region": "overseas"},
+    {"source": "Bitcoin Magazine", "url": "https://bitcoinmagazine.com/feed", "region": "overseas"},
+    {"source": "Blockworks", "url": "https://blockworks.co/feed", "region": "overseas"},
+    {"source": "CryptoSlate", "url": "https://cryptoslate.com/feed/", "region": "overseas"},
+    {"source": "NewsBTC", "url": "https://www.newsbtc.com/feed/", "region": "overseas"},
+    {"source": "CryptoPotato", "url": "https://cryptopotato.com/feed/", "region": "overseas"},
+    {"source": "DL News", "url": "https://www.dlnews.com/arc/outboundfeeds/rss/", "region": "overseas"},
+    {"source": "코인데스크코리아", "url": "https://www.coindeskkorea.com/rss", "region": "domestic"},
+    {"source": "토큰포스트", "url": "https://www.tokenpost.kr/rss", "region": "domestic"},
+    {"source": "블록미디어", "url": "https://www.blockmedia.co.kr/feed", "region": "domestic"},
 ]
 
 STOCK_FEEDS = [
-    {"source": "Yahoo Finance", "url": "https://finance.yahoo.com/news/rssindex"},
-    {"source": "CNBC", "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html"},
-    {"source": "MarketWatch", "url": "https://feeds.marketwatch.com/marketwatch/topstories/"},
-    {"source": "Bloomberg", "url": "https://feeds.bloomberg.com/markets/news.rss"},
-    {"source": "NASDAQ", "url": "https://www.nasdaq.com/feed/rssoutbound?category=Markets"},
-    {"source": "Seeking Alpha", "url": "https://seekingalpha.com/feed.xml"},
-    {"source": "Fox Business", "url": "https://feeds.foxbusiness.com/foxbusiness/latest"},
-    {"source": "WSJ Markets", "url": "https://feeds.a.dj.com/rss/RSSMarketsMain.xml"},
-    {"source": "Investing.com", "url": "https://www.investing.com/rss/news.rss"},
+    {"source": "Yahoo Finance", "url": "https://finance.yahoo.com/news/rssindex", "region": "overseas"},
+    {"source": "CNBC", "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html", "region": "overseas"},
+    {"source": "CNBC Markets", "url": "https://www.cnbc.com/id/20910258/device/rss/rss.html", "region": "overseas"},
+    {"source": "MarketWatch", "url": "https://feeds.marketwatch.com/marketwatch/topstories/", "region": "overseas"},
+    {"source": "MarketWatch Markets", "url": "https://feeds.marketwatch.com/marketwatch/marketpulse/", "region": "overseas"},
+    {"source": "Bloomberg", "url": "https://feeds.bloomberg.com/markets/news.rss", "region": "overseas"},
+    {"source": "NASDAQ", "url": "https://www.nasdaq.com/feed/rssoutbound?category=Markets", "region": "overseas"},
+    {"source": "Seeking Alpha", "url": "https://seekingalpha.com/feed.xml", "region": "overseas"},
+    {"source": "Fox Business", "url": "https://feeds.foxbusiness.com/foxbusiness/latest", "region": "overseas"},
+    {"source": "WSJ Markets", "url": "https://feeds.a.dj.com/rss/RSSMarketsMain.xml", "region": "overseas"},
+    {"source": "Investing.com", "url": "https://www.investing.com/rss/news.rss", "region": "overseas"},
+    {"source": "FT Markets", "url": "https://www.ft.com/markets?format=rss", "region": "overseas"},
+    {"source": "한경 증권", "url": "https://www.hankyung.com/feed/finance", "region": "domestic"},
+    {"source": "매경 증권", "url": "https://www.mk.co.kr/rss/30100041/", "region": "domestic"},
+    {"source": "매경 경제", "url": "https://www.mk.co.kr/rss/30000001/", "region": "domestic"},
+    {"source": "연합뉴스 경제", "url": "https://www.yna.co.kr/rss/economy.xml", "region": "domestic"},
+    {"source": "연합뉴스 산업", "url": "https://www.yna.co.kr/rss/industry.xml", "region": "domestic"},
+    {"source": "뉴시스 경제", "url": "https://www.newsis.com/RSS/economy.xml", "region": "domestic"},
+    {"source": "동아일보 경제", "url": "https://rss.donga.com/economy.xml", "region": "domestic"},
+    {"source": "조선일보 경제", "url": "https://www.chosun.com/arc/outboundfeeds/rss/category/economy/?outputType=xml", "region": "domestic"},
+    {"source": "JTBC 경제", "url": "https://fs.jtbc.co.kr/RSS/economy.xml", "region": "domestic"},
+    {"source": "SBS 경제", "url": "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=01&plink=RSSREADER", "region": "domestic"},
+    {"source": "디지털투데이", "url": "https://www.digitaltoday.co.kr/rss/allArticle.xml", "region": "domestic"},
 ]
 
 RSS_HEADERS = {
@@ -77,27 +99,40 @@ RSS_HEADERS = {
 }
 
 ALL_SOURCES = [f["source"] for f in CRYPTO_FEEDS + STOCK_FEEDS]
+SOURCE_REGION: dict[str, str] = {
+    f["source"]: f.get("region", "overseas") for f in CRYPTO_FEEDS + STOCK_FEEDS
+}
 SETTINGS_PATH = Path(__file__).resolve().parent / "data" / "user_settings.json"
 # 방문객 표시용 시각 — 항상 한국 표준시 (서머타임 없음)
 KST = timezone(timedelta(hours=9))
 
-# 워치리스트 외 시장 시그널 키워드 (Hot 점수 보강)
-SIGNAL_KEYWORDS = [
+# HOT 민감도 — 시그널 키워드 범위 + HOT/HOT+ 임계값
+HOT_SENSITIVITY_OPTIONS = ("보수적", "균형", "공격적")
+# 매체 지역 — 전체 / 해외만 / 국내만
+MEDIA_REGION_OPTIONS = ("전체", "해외", "국내")
+
+_SIGNAL_CONSERVATIVE = [
     "ETF",
     "SEC",
     "Fed",
     "FOMC",
-    "listing",
-    "delist",
     "hack",
     "exploit",
     "bankrupt",
     "lawsuit",
     "approval",
-    "reject",
+    "earnings",
     "rate cut",
     "rate hike",
-    "earnings",
+    "상장",
+    "해킹",
+    "실적",
+    "금리",
+]
+_SIGNAL_BALANCED_EXTRA = [
+    "listing",
+    "delist",
+    "reject",
     "guidance",
     "upgrade",
     "downgrade",
@@ -107,11 +142,55 @@ SIGNAL_KEYWORDS = [
     "ATH",
     "crash",
     "rally",
-    "상장",
-    "해킹",
-    "실적",
-    "금리",
+    "CFTC",
+    "liquidation",
+    "승인",
+    "반려",
+    "급등",
+    "급락",
+    "인수",
+    "합병",
 ]
+_SIGNAL_AGGRESSIVE_EXTRA = [
+    "outflow",
+    "inflow",
+    "whale",
+    "airdrop",
+    "unlock",
+    "staking",
+    "mainnet",
+    "stablecoin",
+    "Tether",
+    "USDC",
+    "buyback",
+    "dividend",
+    "split",
+    "layoff",
+    "관세",
+    "제재",
+    "규제",
+    "반도체",
+    "유출",
+    "파산",
+    "공시",
+]
+
+SIGNAL_KEYWORDS_BY_SENSITIVITY: dict[str, list[str]] = {
+    "보수적": list(_SIGNAL_CONSERVATIVE),
+    "균형": list(_SIGNAL_CONSERVATIVE) + list(_SIGNAL_BALANCED_EXTRA),
+    "공격적": (
+        list(_SIGNAL_CONSERVATIVE)
+        + list(_SIGNAL_BALANCED_EXTRA)
+        + list(_SIGNAL_AGGRESSIVE_EXTRA)
+    ),
+}
+
+# hot_min: HOT 최소 점수 / hot_plus_score·hot_plus_watch: HOT+ 조건
+HOT_THRESHOLDS: dict[str, dict[str, int]] = {
+    "보수적": {"hot_min": 2, "hot_plus_score": 5, "hot_plus_watch": 2},
+    "균형": {"hot_min": 1, "hot_plus_score": 4, "hot_plus_watch": 2},
+    "공격적": {"hot_min": 1, "hot_plus_score": 3, "hot_plus_watch": 2},
+}
 
 TRANSLATE_PROMPTS = {
     "crypto": (
@@ -262,6 +341,26 @@ section[data-testid="stSidebar"] .stTextArea textarea {
   border-radius: 6px !important;
   font-size: 0.86rem !important;
   font-family: 'Noto Sans KR', sans-serif !important;
+}
+
+/* 메인 키워드 필터 등 — 배경과 비슷하되 입력창으로 구분 */
+[data-testid="stAppViewContainer"] .stTextInput input {
+  background: #1a1f28 !important;
+  color: var(--text) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 8px !important;
+  font-size: 0.86rem !important;
+  font-family: 'Noto Sans KR', sans-serif !important;
+  caret-color: var(--accent) !important;
+}
+[data-testid="stAppViewContainer"] .stTextInput input::placeholder {
+  color: var(--muted) !important;
+  opacity: 1 !important;
+}
+[data-testid="stAppViewContainer"] .stTextInput input:focus {
+  background: #1e2430 !important;
+  border-color: var(--accent-border) !important;
+  box-shadow: 0 0 0 1px rgba(110, 159, 255, 0.18) !important;
 }
 
 section[data-testid="stSidebar"] div[data-testid="stCheckbox"] label p {
@@ -551,6 +650,34 @@ mark.hl {
   margin-top: 0.15rem;
 }
 
+/* 공통 필터 박스 (HOT 민감도 + 매체) — CRYPTO/STOCKS 열과 분리 */
+.global-feed-kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  margin: 0 0 0.15rem 0;
+}
+.global-feed-sub {
+  font-size: 0.7rem;
+  color: var(--faint);
+  margin: 0 0 0.55rem 0;
+  line-height: 1.4;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker) {
+  background: rgba(110, 159, 255, 0.1);
+  border: 1.5px solid rgba(110, 159, 255, 0.55) !important;
+  border-radius: 8px;
+  margin: 0.35rem 0 0.55rem 0;
+  box-shadow: inset 0 0 0 1px rgba(110, 159, 255, 0.12);
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker)
+  [data-testid="stCaption"] {
+  font-size: 0.72rem !important;
+  color: var(--muted) !important;
+  margin-bottom: 0.15rem !important;
+}
+
 /* 피드 2열만 구분선 (헤더 햄버거 행 제외) */
 div[data-testid="stHorizontalBlock"]:has(.panel-head) > div:nth-child(1) {
   border-right: 1px solid var(--line);
@@ -693,7 +820,11 @@ def _default_settings() -> dict[str, Any]:
         "alert_on_watchlist": True,
         "alert_on_source": True,
         "result_limit": 40,
-        "sort_hot_first": True,
+        # 패널별 정렬 (기본 HOT순). CRYPTO / STOCKS 독립
+        "sort_hot_first_crypto": True,
+        "sort_hot_first_stocks": True,
+        "hot_sensitivity": "공격적",
+        "media_region": "해외",
         "use_signal_keywords": True,
         # 번역은 기본 OFF. ON이어도 HOT/NEW만 배치 1회로 호출해 할당량 절약
         "enable_translation": False,
@@ -737,10 +868,27 @@ def _ensure_source_keys(settings: dict[str, Any]) -> dict[str, Any]:
     for src in ALL_SOURCES:
         enabled.setdefault(src, True)
         alert.setdefault(src, False)
+    # 레거시 공통 sort_hot_first → 패널별 키로 이전
+    if "sort_hot_first_crypto" not in settings or "sort_hot_first_stocks" not in settings:
+        legacy = bool(settings.get("sort_hot_first", True))
+        settings.setdefault("sort_hot_first_crypto", legacy)
+        settings.setdefault("sort_hot_first_stocks", legacy)
+    sens = settings.get("hot_sensitivity", "공격적")
+    if sens not in HOT_SENSITIVITY_OPTIONS:
+        settings["hot_sensitivity"] = "공격적"
+    else:
+        settings.setdefault("hot_sensitivity", "공격적")
+    region = settings.get("media_region", "해외")
+    if region not in MEDIA_REGION_OPTIONS:
+        settings["media_region"] = "해외"
+    else:
+        settings.setdefault("media_region", "해외")
     return settings
 
 
-# 매체 RSS 번역은 무료. 남용 방지용 숨은 상한(배너에 표시하지 않음)
+# 앱 내 Gemini 번역 토글 UI. False면 숨기고 코드·파이프라인은 보관
+SHOW_APP_TRANSLATION_UI = False
+# 매체 RSS 번역(보관용). 남용 방지용 숨은 상한(배너에 표시하지 않음)
 SOFT_TRANSLATE_DAILY_CAP = 2000
 
 
@@ -748,6 +896,8 @@ def init_session_settings() -> None:
     if "settings" not in st.session_state:
         st.session_state.settings = load_settings_file()
     st.session_state.settings = _ensure_source_keys(st.session_state.settings)
+    if not SHOW_APP_TRANSLATION_UI:
+        st.session_state.settings["enable_translation"] = False
     if "seen_ids" not in st.session_state:
         st.session_state.seen_ids = set()
     if "seeded_seen" not in st.session_state:
@@ -772,8 +922,14 @@ def _is_logged_in() -> bool:
 
 
 def _show_ads() -> bool:
-    """Pro는 광고 없음."""
-    return not auth_quota.is_pro()
+    """Pro는 광고 없음. 개인 모드·핫리로드 중에는 광고 표시."""
+    is_pro = getattr(auth_quota, "is_pro", None)
+    if not callable(is_pro):
+        return True
+    try:
+        return not bool(is_pro())
+    except Exception:
+        return True
 
 
 def _ensure_soft_translate_day() -> None:
@@ -802,12 +958,14 @@ def _translate_soft_consume(n: int) -> None:
 
 
 def _status_product_label() -> str:
-    if auth_quota.is_pro():
-        return f"Pro · 광고 없음 · X·시그널 우선 ({billing.PRO_PRICE_LABEL})"
-    return (
-        f"매체 뉴스·번역 무료 · Pro는 X·시그널+광고제거 "
-        f"({billing.PRO_PRICE_LABEL})"
-    )
+    if billing.pro_billing_enabled() and auth_quota.is_pro():
+        return f"Pro · 광고 없음 · 시그널 우선 ({billing.PRO_PRICE_LABEL})"
+    if billing.pro_billing_enabled():
+        return (
+            f"검증 매체 속보 무료 · Pro는 광고 제거 + 시그널 우선 "
+            f"({billing.PRO_PRICE_LABEL})"
+        )
+    return "검증 매체 속보 · 영어는 주소창 오른쪽 번역 (Chrome·Edge)"
 
 
 def _register_article(row: dict[str, Any], category: Category = "crypto") -> str:
@@ -969,9 +1127,9 @@ def render_reader_page(article: dict[str, Any]) -> None:
 
         st.markdown(
             '<div class="reader-notice">'
-            "이 페이지는 헤드라인·번역 안내입니다. "
-            "기사 전문·이미지는 원문 사이트에서 확인하세요. "
-            "좌·우 ‘Ad’ 영역은 배포 후 광고가 들어갈 자리입니다."
+            "헤드라인 안내입니다. 전문은 원문에서 확인하세요. "
+            "영어는 주소창 오른쪽 ‘번역’(Chrome·Edge) 버튼을 눌러주세요. "
+            "좌·우 Ad는 광고 자리입니다."
             "</div>",
             unsafe_allow_html=True,
         )
@@ -1014,7 +1172,48 @@ def _item_id(item: dict[str, Any]) -> str:
 
 RSS_TIMEOUT_SEC = 6
 RSS_MAX_WORKERS = 8
-RSS_ENTRIES_PER_FEED = 20
+RSS_ENTRIES_PER_FEED = 40
+# 화면에 보여줄 기사 발행 시각 상한 (현재 시각 기준)
+FEED_MAX_AGE = timedelta(hours=48)
+
+# 키워드 필터 별칭 (영문 티커 ↔ 표기/한글)
+SEARCH_ALIASES: dict[str, list[str]] = {
+    "samsung": ["samsung", "삼성전자", "삼성"],
+    "hynix": ["hynix", "하이닉스", "sk hynix", "sk하이닉스"],
+    "microsoft": ["microsoft", "msft"],
+    "apple": ["apple", "aapl"],
+    "nvidia": ["nvidia", "nvda"],
+    "google": ["google", "alphabet", "googl", "goog"],
+    "amazon": ["amazon", "amzn"],
+    "tesla": ["tesla", "tsla"],
+    "meta": ["meta", "facebook", "fb"],
+}
+
+
+def _is_within_feed_max_age(
+    item: dict[str, Any],
+    *,
+    max_age: timedelta = FEED_MAX_AGE,
+    now: datetime | None = None,
+) -> bool:
+    """발행 시각이 now 기준 max_age 이내인지. 파싱 실패 시 제외."""
+    raw = item.get("published_iso") or ""
+    if not raw:
+        return False
+    try:
+        dt = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.astimezone(timezone.utc)
+    except ValueError:
+        return False
+    ref = now or datetime.now(timezone.utc)
+    if ref.tzinfo is None:
+        ref = ref.replace(tzinfo=timezone.utc)
+    else:
+        ref = ref.astimezone(timezone.utc)
+    age = ref - dt
+    return timedelta(0) <= age <= max_age
 
 
 def _parse_feed_url(url: str) -> tuple[Any, bool]:
@@ -1370,21 +1569,54 @@ def _matched_terms(text: str, terms: list[str]) -> list[str]:
     return hits
 
 
+def _normalize_hot_sensitivity(value: Any) -> str:
+    if value in HOT_SENSITIVITY_OPTIONS:
+        return str(value)
+    return "공격적"
+
+
+def _normalize_media_region(value: Any) -> str:
+    if value in MEDIA_REGION_OPTIONS:
+        return str(value)
+    return "해외"
+
+
+def _source_matches_media_region(source: str, media_region: str) -> bool:
+    """매체 지역 필터. 전체면 통과, 해외/국내는 SOURCE_REGION 기준."""
+    region = _normalize_media_region(media_region)
+    if region == "전체":
+        return True
+    src_region = SOURCE_REGION.get(source, "overseas")
+    if region == "해외":
+        return src_region == "overseas"
+    if region == "국내":
+        return src_region == "domestic"
+    return True
+
+
 def _heat_info(
     text: str,
     watchlist: list[str],
     use_signal_keywords: bool,
+    hot_sensitivity: str = "공격적",
 ) -> dict[str, Any]:
     """Watchlist + market signal keywords → heat score / labels."""
+    sensitivity = _normalize_hot_sensitivity(hot_sensitivity)
+    signal_terms = SIGNAL_KEYWORDS_BY_SENSITIVITY.get(
+        sensitivity, SIGNAL_KEYWORDS_BY_SENSITIVITY["공격적"]
+    )
+    thresholds = HOT_THRESHOLDS.get(sensitivity, HOT_THRESHOLDS["공격적"])
     watch_hits = _matched_terms(text, watchlist)
     signal_hits = (
-        _matched_terms(text, SIGNAL_KEYWORDS) if use_signal_keywords else []
+        _matched_terms(text, signal_terms) if use_signal_keywords else []
     )
     # 워치리스트 가중치 더 높게
     score = len(watch_hits) * 2 + len(signal_hits)
-    if score >= 4 or len(watch_hits) >= 2:
+    if score >= thresholds["hot_plus_score"] or len(watch_hits) >= thresholds[
+        "hot_plus_watch"
+    ]:
         tier = "hot+"
-    elif score >= 1:
+    elif score >= thresholds["hot_min"]:
         tier = "hot"
     else:
         tier = None
@@ -1457,11 +1689,32 @@ def _query_tokens(query: str) -> list[str]:
     return [t for t in re.split(r"[\s,]+", query.strip()) if t]
 
 
+def _expand_query_tokens(tokens: list[str]) -> list[str]:
+    """티커·별칭을 펼쳐 검색 재현율을 높임."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in tokens:
+        key = raw.strip().lower()
+        if not key:
+            continue
+        alts = SEARCH_ALIASES.get(key) or [raw.strip()]
+        for alt in alts:
+            a = alt.strip()
+            if not a:
+                continue
+            low = a.lower()
+            if low in seen:
+                continue
+            seen.add(low)
+            out.append(a)
+    return out
+
+
 def _matches_query(item: dict[str, Any], translated: str, query: str) -> bool:
     if not query or not query.strip():
         return True
     blob = f"{item.get('title', '')} {translated}".lower()
-    tokens = _query_tokens(query)
+    tokens = _expand_query_tokens(_query_tokens(query))
     if not tokens:
         return True
     # OR: any token matches (substring on the combined blob)
@@ -1511,25 +1764,38 @@ def prepare_rows(
     watchlist: list[str],
     limit: int,
     use_signal_keywords: bool = True,
+    hot_sensitivity: str = "공격적",
+    media_region: str = "해외",
     sort_hot_first: bool = True,
     fetched_at: str | None = None,
     enable_translation: bool = False,
     translate_limit: int = 6,
     translate_only_hot_new: bool = True,
 ) -> list[dict[str, Any]]:
-    """소스 필터 → 후보 구성 → (번역) → 검색 → 정렬 → limit."""
+    """소스·지역 필터 → 최근 48시간 → (키워드) → 후보 구성 → (번역) → 정렬 → limit."""
     rows: list[dict[str, Any]] = []
     seen: set[str] = st.session_state.seen_ids
     fetched_at = fetched_at or _now_kst().strftime("%H:%M:%S")
-    # 검색이 번역 이후에 걸리므로, 쿼리 있을 때 후보 풀을 더 넓게
-    pool_cap = max(limit * 5, 100) if query.strip() else max(limit * 3, limit)
+    now_utc = datetime.now(timezone.utc)
+    has_query = bool(query.strip())
+    sensitivity = _normalize_hot_sensitivity(hot_sensitivity)
+    region_filter = _normalize_media_region(media_region)
+    # 키워드 없을 때만 후보 상한. 검색 시에는 48h 전체를 훑어 놓치지 않음.
+    pool_cap = max(limit * 3, limit)
 
     for item in news:
         if not enabled_sources.get(item["source"], True):
             continue
+        if not _source_matches_media_region(item["source"], region_filter):
+            continue
+        if not _is_within_feed_max_age(item, now=now_utc):
+            continue
 
         title = item.get("title", "")
-        heat = _heat_info(title, watchlist, use_signal_keywords)
+        if has_query and not _matches_query(item, title, query):
+            continue
+
+        heat = _heat_info(title, watchlist, use_signal_keywords, sensitivity)
         item_id = item.get("id") or _item_id(item)
         is_new = item_id not in seen if st.session_state.seeded_seen else False
 
@@ -1548,7 +1814,7 @@ def prepare_rows(
                 "fetched_at": fetched_at,
             }
         )
-        if len(rows) >= pool_cap:
+        if not has_query and len(rows) >= pool_cap:
             break
 
     def _sort_key(r: dict[str, Any]) -> tuple[Any, ...]:
@@ -1560,6 +1826,11 @@ def prepare_rows(
 
     if sort_hot_first:
         rows.sort(key=_sort_key, reverse=True)
+    else:
+        rows.sort(
+            key=lambda r: r["item"].get("published_iso", ""),
+            reverse=True,
+        )
 
     # --- HOT/NEW 배치 번역 (매체 RSS 무료 + 숨은 soft cap) ---
     translate_pool = rows[: max(limit * 2, limit)]
@@ -1588,7 +1859,7 @@ def prepare_rows(
                 row["translated"] = cached if cached else title
 
             blob = f"{title} {row['translated']}"
-            heat = _heat_info(blob, watchlist, use_signal_keywords)
+            heat = _heat_info(blob, watchlist, use_signal_keywords, sensitivity)
             row["is_hot"] = heat["is_hot"] or row["is_hot"]
             row["heat_tier"] = heat["tier"] or row["heat_tier"]
             row["heat_score"] = max(row["heat_score"], heat["score"])
@@ -1610,6 +1881,11 @@ def prepare_rows(
 
     if sort_hot_first:
         rows.sort(key=_sort_key, reverse=True)
+    else:
+        rows.sort(
+            key=lambda r: r["item"].get("published_iso", ""),
+            reverse=True,
+        )
 
     return rows[:limit]
 
@@ -1730,17 +2006,186 @@ def _format_time(iso: str) -> str:
         return "--:--"
 
 
-def render_feed_panel(
+def _feed_sort_label(sort_hot_first: bool) -> str:
+    return "HOT순" if sort_hot_first else "최신순"
+
+
+def _sort_settings_key(panel: str) -> str:
+    return "sort_hot_first_crypto" if panel == "crypto" else "sort_hot_first_stocks"
+
+
+def _resolve_hot_sensitivity(settings: dict[str, Any]) -> str:
+    """
+    HOT 민감도 라디오(이전 런 값)를 settings에 반영.
+    prepare_rows 보다 먼저 호출해야 점수·라벨이 바로 적용된다.
+    """
+    key = "hot_sensitivity_radio"
+    label = st.session_state.get(key)
+    if label not in HOT_SENSITIVITY_OPTIONS:
+        label = _normalize_hot_sensitivity(settings.get("hot_sensitivity", "공격적"))
+        st.session_state[key] = label
+    settings["hot_sensitivity"] = label
+    st.session_state.settings = settings
+    return label
+
+
+def _on_hot_sensitivity_change() -> None:
+    label = st.session_state.get("hot_sensitivity_radio")
+    if label not in HOT_SENSITIVITY_OPTIONS:
+        return
+    settings = st.session_state.get("settings")
+    if isinstance(settings, dict):
+        settings["hot_sensitivity"] = label
+        st.session_state.settings = settings
+
+
+def _resolve_media_region(settings: dict[str, Any]) -> str:
+    """매체 지역 라디오(이전 런 값)를 settings에 반영. prepare_rows 전에 호출."""
+    key = "media_region_radio"
+    label = st.session_state.get(key)
+    if label not in MEDIA_REGION_OPTIONS:
+        label = _normalize_media_region(settings.get("media_region", "해외"))
+        st.session_state[key] = label
+    settings["media_region"] = label
+    st.session_state.settings = settings
+    return label
+
+
+def _on_media_region_change() -> None:
+    label = st.session_state.get("media_region_radio")
+    if label not in MEDIA_REGION_OPTIONS:
+        return
+    settings = st.session_state.get("settings")
+    if isinstance(settings, dict):
+        settings["media_region"] = label
+        st.session_state.settings = settings
+
+
+def _render_global_feed_controls(settings: dict[str, Any]) -> None:
+    """전역 컨트롤 · HOT 민감도 + 매체 (한 박스, CRYPTO/STOCKS 공통)."""
+    hot_key = "hot_sensitivity_radio"
+    region_key = "media_region_radio"
+    if hot_key not in st.session_state:
+        st.session_state[hot_key] = _normalize_hot_sensitivity(
+            settings.get("hot_sensitivity", "공격적")
+        )
+    if region_key not in st.session_state:
+        st.session_state[region_key] = _normalize_media_region(
+            settings.get("media_region", "해외")
+        )
+
+    # 한 박스 안에서 HOT | 매체 가로 배치 (CRYPTO/STOCKS 열과 별개임을 문구로 명시)
+    with st.container(border=True):
+        st.markdown(
+            '<div class="global-feed-kicker">공통 필터</div>'
+            '<div class="global-feed-sub">'
+            "아래 설정은 CRYPTO · STOCKS 두 패널에 동시에 적용됩니다."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        c_hot, c_region = st.columns(2, gap="medium")
+        with c_hot:
+            st.caption("HOT 민감도")
+            st.radio(
+                "HOT 민감도",
+                list(HOT_SENSITIVITY_OPTIONS),
+                horizontal=True,
+                key=hot_key,
+                label_visibility="collapsed",
+                on_change=_on_hot_sensitivity_change,
+            )
+        with c_region:
+            st.caption("매체")
+            st.radio(
+                "매체",
+                list(MEDIA_REGION_OPTIONS),
+                horizontal=True,
+                key=region_key,
+                label_visibility="collapsed",
+                on_change=_on_media_region_change,
+            )
+
+
+def _resolve_panel_sort(settings: dict[str, Any], panel: str) -> bool:
+    """
+    해당 패널 정렬 라디오(이전 런 값)를 settings에 반영.
+    prepare_rows 보다 먼저 호출해야 정렬이 바로 적용된다.
+    CRYPTO / STOCKS 는 서로 독립.
+    """
+    sk = _sort_settings_key(panel)
+    widget_key = f"feed_sort_{panel}"
+    label = st.session_state.get(widget_key)
+    if label not in ("최신순", "HOT순"):
+        label = _feed_sort_label(bool(settings.get(sk, True)))
+        st.session_state[widget_key] = label
+    settings[sk] = label == "HOT순"
+    st.session_state.settings = settings
+    return bool(settings[sk])
+
+
+def _on_feed_sort_change(panel: str) -> None:
+    key = f"feed_sort_{panel}"
+    label = st.session_state.get(key)
+    if label not in ("최신순", "HOT순"):
+        return
+    settings = st.session_state.get("settings")
+    if isinstance(settings, dict):
+        settings[_sort_settings_key(panel)] = label == "HOT순"
+        st.session_state.settings = settings
+
+
+def _resolve_panel_query(panel: str) -> str:
+    """패널별 키워드 필터 (CRYPTO / STOCKS 독립)."""
+    key = f"feed_filter_{panel}"
+    q = st.session_state.get(key)
+    if q is None:
+        q = ""
+    return str(q)
+
+
+def _render_feed_toolbar(settings: dict[str, Any], *, panel: str) -> None:
+    """CRYPTO/STOCKS 제목 아래 · 정렬·키워드 필터 (패널별 독립)."""
+    options = ["최신순", "HOT순"]
+    desired = _feed_sort_label(bool(settings.get(_sort_settings_key(panel), True)))
+    sort_key = f"feed_sort_{panel}"
+    filter_key = f"feed_filter_{panel}"
+    if sort_key not in st.session_state:
+        st.session_state[sort_key] = desired
+    if filter_key not in st.session_state:
+        st.session_state[filter_key] = ""
+
+    placeholder = (
+        "btc, eth, etf…" if panel == "crypto" else "nvidia, earnings, fed…"
+    )
+    c_sort, c_filter = st.columns([1.15, 1.85], gap="small")
+    with c_sort:
+        st.caption("정렬")
+        st.radio(
+            "정렬",
+            options,
+            horizontal=True,
+            key=sort_key,
+            label_visibility="collapsed",
+            on_change=_on_feed_sort_change,
+            args=(panel,),
+        )
+    with c_filter:
+        st.caption("키워드 필터")
+        st.text_input(
+            "키워드 필터",
+            placeholder=placeholder,
+            key=filter_key,
+            label_visibility="collapsed",
+        )
+
+
+def render_feed_panel_head(
     title: str,
     css_class: str,
     sources_caption: str,
-    rows: list[dict[str, Any]],
-    mode: DisplayMode,
-    watchlist: list[str],
-    sort_hot_first: bool = True,
-    category: Category = "crypto",
     ad_label: str | None = None,
 ) -> None:
+    """패널 제목·소스 캡션 (HOT/매체 컨트롤은 제목과 정렬 사이에 전역 배치)."""
     if ad_label:
         _render_home_ad(f"col-{css_class}", ad_label)
     st.markdown(
@@ -1750,12 +2195,33 @@ def render_feed_panel(
         f"</div>",
         unsafe_allow_html=True,
     )
+
+
+def render_feed_panel_body(
+    rows: list[dict[str, Any]],
+    mode: DisplayMode,
+    watchlist: list[str],
+    sort_hot_first: bool = True,
+    hot_sensitivity: str = "공격적",
+    media_region: str = "해외",
+    category: Category = "crypto",
+) -> None:
+    """정렬·키워드·피드 본문."""
+    _render_feed_toolbar(
+        st.session_state.settings,
+        panel="crypto" if category == "crypto" else "stocks",
+    )
     new_count = sum(1 for r in rows if r["is_new"])
     hot_count = sum(1 for r in rows if r["is_hot"])
-    sort_label = "HOT순" if sort_hot_first else "시간순"
+    sort_label = _feed_sort_label(sort_hot_first)
+    sens_label = _normalize_hot_sensitivity(hot_sensitivity)
+    region_label = _normalize_media_region(media_region)
     st.markdown(
         f'<div class="feed-meta">{len(rows)} results'
+        f' · 최근 48시간'
         f' · {new_count} new · {hot_count} hot'
+        f' · HOT {html.escape(sens_label)}'
+        f' · 매체 {html.escape(region_label)}'
         f' · {sort_label}'
         f' · sync {_now_kst().strftime("%H:%M:%S")} KST</div>',
         unsafe_allow_html=True,
@@ -1764,7 +2230,7 @@ def render_feed_panel(
     if not rows:
         st.info(
             "표시할 속보가 없습니다. "
-            "① 소스 체크 ② 검색어 ③ RSS 실패(상단 배너)를 확인해 주세요."
+            "① 소스 체크 ② 매체(해외/국내) ③ 키워드 필터 ④ RSS 실패(상단 배너)를 확인해 주세요."
         )
         return
 
@@ -1775,10 +2241,21 @@ def render_feed_panel(
 
 
 def _render_signals_teaser() -> None:
-    """Phase 2 X·시그널 자리 — Pro 업셀 / 잠금 프리뷰."""
-    pro = auth_quota.is_pro()
+    """Phase 2 X·시그널 자리 — 출시 예정 (개인 운영 시 구독 CTA 없음)."""
     st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
-    if pro:
+    if not billing.pro_billing_enabled():
+        st.markdown(
+            '<div class="signals-teaser">'
+            "<div class=\"signals-kicker\">SIGNALS · 출시 예정</div>"
+            "<div class=\"signals-title\">X 인플루언서·시그널 속보</div>"
+            "<div class=\"signals-body\">"
+            "준비되는 대로 이 영역에 표시됩니다. "
+            "지금은 검증된 매체 RSS 속보를 이용해 주세요."
+            "</div></div>",
+            unsafe_allow_html=True,
+        )
+        return
+    if auth_quota.is_pro():
         st.markdown(
             '<div class="signals-teaser is-pro">'
             "<div class=\"signals-kicker\">SIGNALS · Pro</div>"
@@ -1794,24 +2271,14 @@ def _render_signals_teaser() -> None:
         "<div class=\"signals-kicker\">SIGNALS · Locked</div>"
         "<div class=\"signals-title\">X 인플루언서·시그널 속보</div>"
         "<div class=\"signals-body\">"
-        f"검증된 매체 RSS는 무료입니다. 소셜·시그널 레이더는 Pro "
-        f"({html.escape(billing.PRO_PRICE_LABEL)}) — "
-        "지금 구독 시 광고 제거 + 시그널 우선 제공."
+        "검증된 매체 RSS는 무료로 계속 볼 수 있습니다. "
+        f"Pro({html.escape(billing.PRO_PRICE_LABEL)})는 "
+        "시그널 우선 + 광고 제거입니다."
         "</div></div>",
         unsafe_allow_html=True,
     )
-    if _is_logged_in() and billing.stripe_configured():
-        user = auth_quota.get_current_user()
-        if user and st.button(
-            f"Pro로 잠금 해제 · {billing.PRO_PRICE_LABEL}",
-            key="btn_signals_checkout",
-            use_container_width=False,
-        ):
-            url = billing.create_checkout_session(
-                user["id"], user.get("email") or ""
-            )
-            if url:
-                st.link_button("결제 페이지로 이동", url)
+    if _is_logged_in() and billing.toss_configured():
+        st.caption("사이드바에서 Pro 카드 등록으로 잠금 해제할 수 있습니다.")
     elif not _is_logged_in() and auth_quota.auth_configured():
         st.caption("Google 로그인 후 Pro를 구독할 수 있습니다. (사이드바)")
 
@@ -1864,6 +2331,11 @@ def _translation_status_lines(
 ) -> tuple[str, bool]:
     """Return (main status text, is_warn)."""
     product = _status_product_label()
+    if not SHOW_APP_TRANSLATION_UI:
+        del translate_limit, translate_only_hot_new, enable_translation
+        return product, False
+
+    del translate_limit, translate_only_hot_new  # 상태줄은 편의 메시지 우선
     if not API_KEY:
         return (
             "번역 불가 · API 키가 없습니다 (로컬 .env / 배포 Streamlit Secrets)",
@@ -1884,14 +2356,13 @@ def _translation_status_lines(
 
     err = st.session_state.get("translate_last_error")
     if enable_translation and err and not st.session_state.get("translate_circuit_open"):
-        return f"번역 ON · 최근 오류 있음 · {product}", True
+        return (
+            f"번역 ON · 피드에서 바로 한국어 · 최근 오류 · {product}",
+            True,
+        )
     if not enable_translation:
         return f"번역 OFF · 원문만 표시 · {product}", False
-    scope = "HOT/NEW" if translate_only_hot_new else "표시 항목"
-    return (
-        f"번역 ON · {scope} 최대 {translate_limit}건/컬럼 · {product}",
-        False,
-    )
+    return f"번역 ON · 피드에서 바로 한국어 · {product}", False
 
 
 def _rss_status_line(health: dict[str, Any], is_stale: bool) -> str:
@@ -1921,63 +2392,52 @@ def _rss_status_line(health: dict[str, Any], is_stale: bool) -> str:
 
 
 def _render_billing_sidebar(user: dict[str, Any]) -> None:
-    """로그인 사용자용 Stripe Checkout / Portal."""
+    """로그인 사용자용 토스페이먼츠 빌링(카드 등록·해지)."""
+    if not billing.pro_billing_enabled():
+        return
     if st.session_state.pop("billing_just_activated", None):
         st.success(
             "Pro가 활성화되었습니다. 광고가 제거되며, "
-            "X·시그널 속보를 우선 제공합니다."
+            "시그널 속보를 우선 제공합니다."
         )
 
-    if not billing.stripe_configured():
+    if not billing.toss_configured():
         st.caption(
-            f"구독 미설정 · Secrets에 STRIPE_SECRET_KEY / STRIPE_PRICE_ID "
-            f"(상품 {billing.PRO_PRICE_LABEL}) 를 넣으면 활성화됩니다."
+            "구독 미설정 · Secrets에 TOSS_CLIENT_KEY / TOSS_SECRET_KEY "
+            f"(자동결제 빌링, {billing.PRO_PRICE_LABEL}) 를 넣으면 활성화됩니다."
         )
         return
 
     if auth_quota.is_pro(user):
         st.caption(
-            f"Pro 구독 중 · 광고 없음 · X·시그널 우선 ({billing.PRO_PRICE_LABEL})"
+            f"Pro 구독 중 · 광고 없음 · 시그널 우선 ({billing.PRO_PRICE_LABEL})"
         )
-        customer_id = (user.get("stripe_customer_id") or "").strip()
-        if not customer_id:
-            billed = billing.get_profile_billing(user["id"])
-            customer_id = (billed.get("stripe_customer_id") or "").strip()
-            if customer_id:
-                user["stripe_customer_id"] = customer_id
-        if customer_id:
-            if st.button("구독 관리", use_container_width=True, key="btn_portal"):
-                portal = billing.create_portal_session(customer_id)
-                if portal:
-                    st.link_button("포털로 이동", portal, use_container_width=True)
-                else:
-                    st.warning(
-                        st.session_state.get("billing_last_error")
-                        or "구독 관리 페이지를 열 수 없습니다."
-                    )
-        else:
-            st.caption("고객 ID가 없습니다. 잠시 후 새로고침해 주세요.")
-    else:
-        st.caption("무료 · 매체 RSS·번역 · 홈 광고 표시")
-        st.caption(
-            "Pro · 출시 예정 X·시그널 우선 제공 + 지금 바로 광고 제거"
-        )
-        if st.button(
-            f"Pro 구독 · {billing.PRO_PRICE_LABEL}",
-            use_container_width=True,
-            type="primary",
-            key="btn_checkout",
-        ):
-            url = billing.create_checkout_session(
-                user["id"], user.get("email") or ""
-            )
-            if url:
-                st.link_button("결제 페이지로 이동", url, use_container_width=True)
+        billed = billing.get_profile_billing(user["id"])
+        next_at = billed.get("next_billing_at")
+        if next_at:
+            st.caption(f"다음 결제일(예정): {next_at}")
+        if st.button("구독 해지", use_container_width=True, key="btn_cancel_pro"):
+            if billing.cancel_pro(user["id"]):
+                st.success("Pro 구독이 해지되었습니다.")
+                st.rerun()
             else:
                 st.warning(
                     st.session_state.get("billing_last_error")
-                    or "Checkout을 시작하지 못했습니다."
+                    or "해지에 실패했습니다."
                 )
+    else:
+        st.caption("무료 · 매체 RSS · 홈 광고")
+        st.caption(
+            "Pro · 광고 제거 + 출시 예정 시그널 우선 · "
+            f"카드 등록 시 {billing.PRO_AMOUNT:,}원 결제"
+        )
+        ck = billing.customer_key_for_user(user["id"])
+        html_sdk = billing.billing_auth_html(
+            customer_key=ck,
+            customer_email=user.get("email") or "",
+            customer_name=(user.get("email") or "회원").split("@")[0],
+        )
+        components.html(html_sdk, height=72)
         err = st.session_state.get("billing_last_error")
         if err:
             st.caption(f"결제 오류: {err}")
@@ -1985,25 +2445,29 @@ def _render_billing_sidebar(user: dict[str, Any]) -> None:
 
 def _render_auth_sidebar() -> None:
     st.markdown('<div class="sidebar-label">계정</div>', unsafe_allow_html=True)
+    if not billing.pro_billing_enabled():
+        st.caption("개인 무료 단말 · 로그인·결제 없음")
+        return
+
     if not auth_quota.auth_configured():
         st.caption(
             "Google 로그인 미설정 · Secrets에 SUPABASE_URL / "
             "SUPABASE_ANON_KEY / APP_URL 을 넣으면 Pro 결제가 활성화됩니다."
         )
-        st.caption("매체 뉴스·번역은 로그인 없이 무료입니다.")
+        st.caption("검증 매체 속보·번역 편의는 로그인 없이 무료입니다.")
         return
 
     user = auth_quota.get_current_user()
     if user:
         email = user.get("email") or user.get("id", "")
         st.caption(f"로그인 · {email}")
-        st.caption("매체 뉴스·번역 · 무료")
+        st.caption("검증 매체 속보 · 번역 편의 무료")
         _render_billing_sidebar(user)
         if st.button("로그아웃", use_container_width=True, key="btn_logout"):
             auth_quota.logout()
             st.rerun()
     else:
-        st.caption("비로그인 · 매체 뉴스·번역 무료")
+        st.caption("비로그인 · 검증 매체 속보·번역 편의 무료")
         oauth_url = auth_quota.get_google_oauth_url()
         if oauth_url:
             st.link_button(
@@ -2014,7 +2478,7 @@ def _render_auth_sidebar() -> None:
             )
             st.caption(
                 f"로그인 후 Pro({billing.PRO_PRICE_LABEL}) · "
-                "X·시그널 우선 + 광고 제거"
+                "광고 제거 + 시그널 우선"
             )
         else:
             st.warning("로그인 URL을 만들지 못했습니다. Secrets·Supabase 설정을 확인하세요.")
@@ -2030,34 +2494,32 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     _render_auth_sidebar()
     st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
 
-    # 1) 검색
+    # 1) 검색 안내 (실제 필터는 각 패널 제목 아래)
     st.markdown('<div class="sidebar-label">검색</div>', unsafe_allow_html=True)
-    query = st.text_input(
-        "키워드 필터",
-        placeholder="btc, nvidia, 실적…",
-        label_visibility="collapsed",
-        key="search_query",
-    )
-    st.markdown(
-        '<div class="sidebar-hint">원문·번역문 검색 · 콤마/공백은 OR</div>',
-        unsafe_allow_html=True,
+    st.caption(
+        "키워드 필터는 CRYPTO / STOCKS 각 패널에서 따로 사용할 수 있습니다. "
+        "콤마·공백은 OR입니다."
     )
 
     # 2) 표시 모드
     st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
     st.markdown('<div class="sidebar-label">표시</div>', unsafe_allow_html=True)
-    mode_label = st.radio(
-        "표시 모드",
-        options=["원문 + 번역", "원문만", "번역만"],
-        index=0,
-        label_visibility="collapsed",
-    )
-    mode_map: dict[str, DisplayMode] = {
-        "원문 + 번역": "both",
-        "원문만": "en",
-        "번역만": "ko",
-    }
-    mode = mode_map[mode_label]
+    if SHOW_APP_TRANSLATION_UI:
+        mode_label = st.radio(
+            "표시 모드",
+            options=["원문 + 번역", "원문만", "번역만"],
+            index=0,
+            label_visibility="collapsed",
+        )
+        mode_map: dict[str, DisplayMode] = {
+            "원문 + 번역": "both",
+            "원문만": "en",
+            "번역만": "ko",
+        }
+        mode = mode_map[mode_label]
+    else:
+        mode = "en"
+        st.caption("표시: 영어 원문")
     _limit_opts = [20, 40, 80]
     _cur_limit = settings.get("result_limit", 40)
     settings["result_limit"] = st.selectbox(
@@ -2065,34 +2527,43 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
         options=_limit_opts,
         index=_limit_opts.index(_cur_limit) if _cur_limit in _limit_opts else 1,
     )
-    st.markdown(
-        '<div class="sidebar-hint">'
-        "표시 모드 = 카드에 무엇을 보여줄지 · "
-        "번역 스위치(메인 상단) = Gemini 호출 · "
-        "매체 RSS 번역은 무료"
-        "</div>",
-        unsafe_allow_html=True,
-    )
-    st.caption(_status_product_label())
-    if settings.get("enable_translation"):
-        settings["translate_only_hot_new"] = st.checkbox(
-            "HOT / NEW 만 번역 (권장)",
-            value=bool(settings.get("translate_only_hot_new", True)),
-            key="translate_only_hot_new_cb",
+
+    # 브라우저 번역 안내 (앱 내 번역 토글 대체)
+    st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-label">브라우저 번역</div>', unsafe_allow_html=True)
+    st.caption("Chrome · Edge: 주소창 오른쪽 **번역**을 누르면 페이지가 한국어로 바뀝니다.")
+    st.caption("「항상 번역」을 켜 두면 다음부터 더 편합니다.")
+
+    if SHOW_APP_TRANSLATION_UI:
+        st.markdown(
+            '<div class="sidebar-hint">'
+            "표시 모드 = 카드에 무엇을 보여줄지 · "
+            "번역 = 앱 내 Gemini (보관용 UI)"
+            "</div>",
+            unsafe_allow_html=True,
         )
-        settings["translate_limit"] = st.slider(
-            "배치 번역 최대 개수(컬럼당)",
-            min_value=3,
-            max_value=12,
-            value=int(settings.get("translate_limit", 6)),
-            key="translate_limit_slider",
-            help="한 번에 번역할 후보 개수(컬럼당).",
-        )
-        calls = int(st.session_state.get("translate_api_calls", 0))
-        batch_n = int(st.session_state.get("translate_last_batch_size", 0))
-        st.caption(f"이번 세션 API 호출: {calls}회 · 마지막 배치: {batch_n}건")
+        st.caption(_status_product_label())
+        if settings.get("enable_translation"):
+            settings["translate_only_hot_new"] = st.checkbox(
+                "HOT / NEW 만 번역 (권장)",
+                value=bool(settings.get("translate_only_hot_new", True)),
+                key="translate_only_hot_new_cb",
+            )
+            settings["translate_limit"] = st.slider(
+                "배치 번역 최대 개수(컬럼당)",
+                min_value=3,
+                max_value=12,
+                value=int(settings.get("translate_limit", 6)),
+                key="translate_limit_slider",
+                help="한 번에 번역할 후보 개수(컬럼당).",
+            )
+            calls = int(st.session_state.get("translate_api_calls", 0))
+            batch_n = int(st.session_state.get("translate_last_batch_size", 0))
+            st.caption(f"이번 세션 API 호출: {calls}회 · 마지막 배치: {batch_n}건")
+        else:
+            st.caption("현재 번역 OFF · 메인 상단 스위치로 켤 수 있습니다.")
     else:
-        st.caption("현재 번역 OFF · 메인 상단 스위치로 켤 수 있습니다.")
+        settings["enable_translation"] = False
 
     # 3) 워치리스트
     st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
@@ -2108,7 +2579,8 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     settings["watchlist"] = _parse_watchlist(watch_raw)
     st.markdown(
         '<div class="sidebar-hint">'
-        "HOT 점수 = 워치×2 + 시그널 · 단어 단위 매칭 (ETH≠ETF)"
+        "HOT 점수 = 워치×2 + 시그널 · 단어 단위 매칭 (ETH≠ETF). "
+        "민감도(보수적·균형·공격적)는 메인 화면에서 바꿀 수 있습니다."
         "</div>",
         unsafe_allow_html=True,
     )
@@ -2117,10 +2589,9 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
         value=settings.get("use_signal_keywords", True),
         key="use_signal_keywords",
     )
-    settings["sort_hot_first"] = st.checkbox(
-        "HOT 점수 높은 순으로 정렬",
-        value=settings.get("sort_hot_first", True),
-        key="sort_hot_first",
+    st.caption(
+        "목록 정렬(최신순·HOT순)은 CRYPTO / STOCKS 각각 제목 아래에서 "
+        "따로 바꿀 수 있습니다."
     )
 
     # 4) 소스
@@ -2245,28 +2716,32 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
         '<div class="sidebar-hint">자동 새로고침 60초 · RSS 공개 피드</div>',
         unsafe_allow_html=True,
     )
-    if not API_KEY:
-        st.warning("`GEMINI_API_KEY`가 비어 있습니다. 로컬은 `.env`, 배포는 Streamlit Secrets에 넣으세요.")
-    else:
-        st.markdown(
-            f'<div class="sidebar-hint">번역 모델 · {GEMINI_MODEL}</div>',
-            unsafe_allow_html=True,
-        )
-    err = st.session_state.get("translate_last_error")
-    if err:
-        st.caption(f"번역 오류: {err}")
-    if st.session_state.get("translate_circuit_open"):
-        st.warning("번역 회로 차단됨 · API 호출 일시 중지")
-    if err or st.session_state.get("translate_circuit_open"):
-        if st.button("번역 재시도 / 캐시 초기화", use_container_width=True):
-            _llm_translate_batch_cached.clear()
-            st.session_state.pop("translate_last_error", None)
-            st.session_state["translate_fail_count"] = 0
-            st.session_state["translate_circuit_open"] = False
-            st.rerun()
+    if SHOW_APP_TRANSLATION_UI:
+        if not API_KEY:
+            st.warning(
+                "`GEMINI_API_KEY`가 비어 있습니다. "
+                "로컬은 `.env`, 배포는 Streamlit Secrets에 넣으세요."
+            )
+        else:
+            st.markdown(
+                f'<div class="sidebar-hint">번역 모델 · {GEMINI_MODEL}</div>',
+                unsafe_allow_html=True,
+            )
+        err = st.session_state.get("translate_last_error")
+        if err:
+            st.caption(f"번역 오류: {err}")
+        if st.session_state.get("translate_circuit_open"):
+            st.warning("번역 회로 차단됨 · API 호출 일시 중지")
+        if err or st.session_state.get("translate_circuit_open"):
+            if st.button("번역 재시도 / 캐시 초기화", use_container_width=True):
+                _llm_translate_batch_cached.clear()
+                st.session_state.pop("translate_last_error", None)
+                st.session_state["translate_fail_count"] = 0
+                st.session_state["translate_circuit_open"] = False
+                st.rerun()
 
     st.session_state.settings = settings
-    return query, mode, settings
+    return mode, settings
 
 
 def _render_brand_header() -> None:
@@ -2334,12 +2809,21 @@ def _render_brand_header() -> None:
             min-width: 0;
           }
           .app-title {
+            display: inline-block;
             font-size: 1.55rem;
             font-weight: 800;
             color: #f3f5f9;
             margin: 0;
             letter-spacing: -0.04em;
             line-height: 1.15;
+          }
+          a.app-title-link {
+            color: #f3f5f9;
+            text-decoration: none;
+            cursor: pointer;
+          }
+          a.app-title-link:hover {
+            color: #6e9fff;
           }
           .app-subtitle {
             font-size: 0.78rem;
@@ -2367,9 +2851,9 @@ def _render_brand_header() -> None:
             </span>
           </button>
           <div class="brand-text">
-            <div class="app-title">라디오 데스크</div>
+            <a class="app-title app-title-link" href="/" target="_parent" title="홈으로">라디오 데스크</a>
             <div class="app-subtitle">Market News Terminal</div>
-            <div class="app-sub">영어 원문과 한국어 번역을 한 화면에서</div>
+            <div class="app-sub">검증 매체 속보 · 영어는 주소창 오른쪽 번역</div>
           </div>
         </div>
         <script>
@@ -2418,18 +2902,25 @@ def _render_brand_header() -> None:
 
 
 def render_title_with_hamburger(settings: dict[str, Any]) -> dict[str, Any]:
-    """Brand cluster (hamburger + title) | translation toggle."""
-    left, right = st.columns([6.2, 1.3], vertical_alignment="center", gap="small")
-    with left:
+    """Brand cluster (hamburger + title) | optional translation toggle (보관)."""
+    if SHOW_APP_TRANSLATION_UI:
+        left, right = st.columns([6.2, 1.3], vertical_alignment="center", gap="small")
+        with left:
+            _render_brand_header()
+        with right:
+            st.markdown(
+                '<div class="rd-translate-anchor" aria-hidden="true"></div>',
+                unsafe_allow_html=True,
+            )
+            settings["enable_translation"] = st.toggle(
+                "번역",
+                value=bool(settings.get("enable_translation", False)),
+                key="main_enable_translation_toggle",
+                help="앱 내 Gemini 번역(보관). HOT/NEW만 배치 번역합니다.",
+            )
+    else:
         _render_brand_header()
-    with right:
-        st.markdown('<div class="rd-translate-anchor" aria-hidden="true"></div>', unsafe_allow_html=True)
-        settings["enable_translation"] = st.toggle(
-            "번역",
-            value=bool(settings.get("enable_translation", False)),
-            key="main_enable_translation_toggle",
-            help="HOT/NEW만 배치 번역합니다.",
-        )
+        settings["enable_translation"] = False
     st.session_state.settings = settings
     return settings
 
@@ -2469,9 +2960,11 @@ def main() -> None:
     st_autorefresh(interval=60_000, key="news_autorefresh")
 
     with st.sidebar:
-        query, mode, settings = render_sidebar()
+        mode, settings = render_sidebar()
 
     settings = render_title_with_hamburger(settings)
+    query_crypto = _resolve_panel_query("crypto")
+    query_stocks = _resolve_panel_query("stocks")
 
     has_feed_cache = bool(
         st.session_state.get("last_crypto_news")
@@ -2491,6 +2984,10 @@ def main() -> None:
     enable_translation = bool(settings.get("enable_translation", False))
     translate_limit = int(settings.get("translate_limit", 6))
     translate_only_hot_new = bool(settings.get("translate_only_hot_new", True))
+    sort_crypto = _resolve_panel_sort(settings, "crypto")
+    sort_stocks = _resolve_panel_sort(settings, "stocks")
+    hot_sensitivity = _resolve_hot_sensitivity(settings)
+    media_region = _resolve_media_region(settings)
 
     if not crypto_news and not stock_news:
         st.error(
@@ -2500,12 +2997,14 @@ def main() -> None:
     crypto_rows = prepare_rows(
         crypto_news,
         "crypto",
-        query,
+        query_crypto,
         enabled,
         watchlist,
         limit,
         use_signal_keywords=settings.get("use_signal_keywords", True),
-        sort_hot_first=settings.get("sort_hot_first", True),
+        hot_sensitivity=hot_sensitivity,
+        media_region=media_region,
+        sort_hot_first=sort_crypto,
         fetched_at=fetched_at,
         enable_translation=enable_translation,
         translate_limit=translate_limit,
@@ -2514,12 +3013,14 @@ def main() -> None:
     stock_rows = prepare_rows(
         stock_news,
         "stocks",
-        query,
+        query_stocks,
         enabled,
         watchlist,
         limit,
         use_signal_keywords=settings.get("use_signal_keywords", True),
-        sort_hot_first=settings.get("sort_hot_first", True),
+        hot_sensitivity=hot_sensitivity,
+        media_region=media_region,
+        sort_hot_first=sort_stocks,
         fetched_at=fetched_at,
         enable_translation=enable_translation,
         translate_limit=translate_limit,
@@ -2548,38 +3049,56 @@ def main() -> None:
 
     _update_seen_and_alerts(crypto_rows + stock_rows, settings)
 
-    col_crypto, col_stocks = st.columns(2, gap="medium")
+    active_crypto = [
+        s
+        for s in (f["source"] for f in CRYPTO_FEEDS)
+        if enabled.get(s, True) and _source_matches_media_region(s, media_region)
+    ]
+    active_stocks = [
+        s
+        for s in (f["source"] for f in STOCK_FEEDS)
+        if enabled.get(s, True) and _source_matches_media_region(s, media_region)
+    ]
 
-    with col_crypto:
-        active_crypto = [
-            s for s in (f["source"] for f in CRYPTO_FEEDS) if enabled.get(s, True)
-        ]
-        render_feed_panel(
+    # 1) 패널 제목 → 2) HOT/매체(정렬 직전) → 3) 정렬·피드
+    head_crypto, head_stocks = st.columns(2, gap="medium")
+    with head_crypto:
+        render_feed_panel_head(
             title="CRYPTO",
             css_class="crypto",
             sources_caption=" · ".join(active_crypto) or "No sources",
-            rows=crypto_rows,
-            mode=mode,
-            watchlist=watchlist,
-            sort_hot_first=bool(settings.get("sort_hot_first", True)),
-            category="crypto",
             ad_label="Crypto",
         )
-
-    with col_stocks:
-        active_stocks = [
-            s for s in (f["source"] for f in STOCK_FEEDS) if enabled.get(s, True)
-        ]
-        render_feed_panel(
+    with head_stocks:
+        render_feed_panel_head(
             title="STOCKS",
             css_class="stocks",
             sources_caption=" · ".join(active_stocks) or "No sources",
+            ad_label="Stocks",
+        )
+
+    _render_global_feed_controls(settings)
+
+    body_crypto, body_stocks = st.columns(2, gap="medium")
+    with body_crypto:
+        render_feed_panel_body(
+            rows=crypto_rows,
+            mode=mode,
+            watchlist=watchlist,
+            sort_hot_first=sort_crypto,
+            hot_sensitivity=hot_sensitivity,
+            media_region=media_region,
+            category="crypto",
+        )
+    with body_stocks:
+        render_feed_panel_body(
             rows=stock_rows,
             mode=mode,
             watchlist=watchlist,
-            sort_hot_first=bool(settings.get("sort_hot_first", True)),
+            sort_hot_first=sort_stocks,
+            hot_sensitivity=hot_sensitivity,
+            media_region=media_region,
             category="stocks",
-            ad_label="Stocks",
         )
 
     _render_signals_teaser()
