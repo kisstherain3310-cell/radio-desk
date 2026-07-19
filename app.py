@@ -1010,7 +1010,7 @@ def _status_product_label() -> str:
             f"검증 매체 속보 무료 · Pro는 광고 제거 + 시그널 우선 "
             f"({billing.PRO_PRICE_LABEL})"
         )
-    return "검증 매체 속보 · 영어는 주소창 오른쪽 번역 (Chrome·Edge)"
+    return "검증 매체 속보 · 영어는 「원문 보기」 후 번역"
 
 
 def _register_article(row: dict[str, Any], category: Category = "crypto") -> str:
@@ -1312,7 +1312,8 @@ def render_reader_page(article: dict[str, Any]) -> None:
         st.markdown(
             '<div class="reader-notice">'
             "헤드라인 안내입니다. 전문은 원문에서 확인하세요. "
-            "영어는 주소창 오른쪽 ‘번역’(Chrome·Edge) 버튼을 눌러주세요. "
+            "영어는 「원문 보기」로 이동한 뒤, 그 사이트에서 번역해 주세요. "
+            "(이 터미널 화면을 통째로 번역하면 오류가 날 수 있습니다.) "
             "좌·우 Ad는 광고 자리입니다."
             "</div>",
             unsafe_allow_html=True,
@@ -1907,6 +1908,31 @@ def _matches_query(item: dict[str, Any], translated: str, query: str) -> bool:
 
 def inject_css() -> None:
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+    # 브라우저 자동번역이 Streamlit DOM을 깨며 removeChild 오류를 내는 경우 완화
+    st.markdown(
+        """
+        <script>
+        (function () {
+          try {
+            const doc = (window.parent && window.parent !== window)
+              ? window.parent.document : document;
+            [doc.documentElement, doc.body, doc.querySelector(".stApp")].forEach((el) => {
+              if (!el) return;
+              el.setAttribute("translate", "no");
+              el.classList.add("notranslate");
+            });
+            if (!doc.querySelector('meta[name="google"][content="notranslate"]')) {
+              const m = doc.createElement("meta");
+              m.setAttribute("name", "google");
+              m.setAttribute("content", "notranslate");
+              doc.head.appendChild(m);
+            }
+          } catch (e) {}
+        })();
+        </script>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def play_alert_beep(count: int = 1) -> None:
@@ -2738,9 +2764,13 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
 
     # 브라우저 번역 안내 (앱 내 번역 토글 대체)
     st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-label">브라우저 번역</div>', unsafe_allow_html=True)
-    st.caption("Chrome · Edge: 주소창 오른쪽 **번역**을 누르면 페이지가 한국어로 바뀝니다.")
-    st.caption("「항상 번역」을 켜 두면 다음부터 더 편합니다.")
+    st.markdown('<div class="sidebar-label">영어 읽기</div>', unsafe_allow_html=True)
+    st.caption(
+        "헤드라인 → 「원문 보기」 → 뉴스 사이트에서 Chrome·Edge **번역**을 쓰세요."
+    )
+    st.caption(
+        "이 터미널(Streamlit) 화면을 통째로 번역하면 화면 오류가 날 수 있습니다."
+    )
 
     if SHOW_APP_TRANSLATION_UI:
         st.markdown(
@@ -3026,7 +3056,7 @@ def _render_brand_header() -> None:
         st.markdown(
             '<a class="rd-brand-home" href="?go_list=1" title="목록으로">라디오 데스크</a>'
             '<div class="rd-brand-sub">Market News Terminal</div>'
-            '<div class="rd-brand-hint">검증 매체 속보 · 영어는 주소창 오른쪽 번역</div>',
+            '<div class="rd-brand-hint">검증 매체 속보 · 영어는 원문 보기 후 번역</div>',
             unsafe_allow_html=True,
         )
 
