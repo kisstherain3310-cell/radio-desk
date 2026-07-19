@@ -409,6 +409,37 @@ section[data-testid="stSidebar"] div[data-testid="stCheckbox"] label p {
   letter-spacing: -0.01em;
 }
 
+/* 로고 홈 링크 (iframe 밖 — 목록 복귀용) */
+a.rd-brand-home {
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: #f3f5f9 !important;
+  text-decoration: none !important;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+  display: inline-block;
+  cursor: pointer;
+}
+a.rd-brand-home:hover {
+  color: #6e9fff !important;
+}
+.rd-brand-sub {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-soft);
+  margin: 0.12rem 0 0 0;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+}
+.rd-brand-hint {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--muted);
+  margin: 0.2rem 0 0.55rem 0;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
 /* 번역 토글 — 헤더 우측 끝 정렬 */
 [data-testid="stColumn"]:has(.rd-translate-anchor) {
   display: flex !important;
@@ -2921,138 +2952,29 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     return mode, settings
 
 
-def _render_brand_header() -> None:
-    """Hamburger + brand as one cluster (avoids Streamlit column min-width gap)."""
+def _render_hamburger_only() -> None:
+    """사이드바 햄버거만 iframe (로고는 페이지에서 목록 복귀 처리)."""
     components.html(
         """
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
         <style>
-          html, body {
-            margin: 0;
-            padding: 0;
-            background: transparent;
-            overflow: hidden;
-            font-family: 'Noto Sans KR', sans-serif;
-          }
-          .brand-cluster {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            box-sizing: border-box;
-            padding: 0;
-            margin: 0;
-          }
+          html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
           .hamburger-btn {
-            flex: 0 0 36px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            box-sizing: border-box;
-            width: 36px;
-            height: 36px;
-            margin: 2px 0 0 0;
-            padding: 0;
-            background: transparent;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 36px; height: 36px; margin: 2px 0 0 0; padding: 0;
+            background: transparent; border: none; border-radius: 6px; cursor: pointer;
           }
-          .hamburger-btn:hover {
-            background: rgba(255, 255, 255, 0.04);
-          }
-          .hamburger-btn:hover .bar {
-            background: #c8ced8;
-          }
-          .hamburger-btn .bars {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 5px;
-            width: 18px;
-            height: 14px;
-          }
-          .hamburger-btn .bar {
-            display: block;
-            height: 2px;
-            width: 100%;
-            background: #9aa3b2;
-            border-radius: 1px;
-          }
-          .brand-text {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            min-width: 0;
-          }
-          .app-title {
-            display: inline-block;
-            font-size: 1.55rem;
-            font-weight: 800;
-            color: #f3f5f9;
-            margin: 0;
-            letter-spacing: -0.04em;
-            line-height: 1.15;
-          }
-          a.app-title-link {
-            color: #f3f5f9;
-            text-decoration: none;
-            cursor: pointer;
-          }
-          a.app-title-link:hover {
-            color: #6e9fff;
-          }
-          .app-subtitle {
-            font-size: 0.78rem;
-            font-weight: 500;
-            color: #c4c8d0;
-            margin: 0;
-            letter-spacing: 0.02em;
-            line-height: 1.25;
-          }
-          .app-sub {
-            font-size: 0.8rem;
-            font-weight: 400;
-            color: #7a8290;
-            margin: 0.2rem 0 0 0;
-            letter-spacing: -0.01em;
-            line-height: 1.3;
-          }
+          .hamburger-btn:hover { background: rgba(255, 255, 255, 0.04); }
+          .hamburger-btn:hover .bar { background: #c8ced8; }
+          .bars { display: flex; flex-direction: column; justify-content: center; gap: 5px; width: 18px; height: 14px; }
+          .bar { display: block; height: 2px; width: 100%; background: #9aa3b2; border-radius: 1px; }
         </style>
-        <div class="brand-cluster">
-          <button class="hamburger-btn" id="hamburger-btn" title="메뉴" aria-label="사이드바 열기">
-            <span class="bars" aria-hidden="true">
-              <span class="bar"></span>
-              <span class="bar"></span>
-              <span class="bar"></span>
-            </span>
-          </button>
-          <div class="brand-text">
-            <a class="app-title app-title-link" id="brand-home-link" href="/" title="목록으로">라디오 데스크</a>
-            <div class="app-subtitle">Market News Terminal</div>
-            <div class="app-sub">검증 매체 속보 · 영어는 주소창 오른쪽 번역</div>
-          </div>
-        </div>
+        <button class="hamburger-btn" id="hamburger-btn" title="메뉴" aria-label="사이드바 열기">
+          <span class="bars" aria-hidden="true">
+            <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+          </span>
+        </button>
         <script>
         (function () {
-          try {
-            const frame = window.frameElement;
-            if (frame) frame.setAttribute('title', 'radio-desk-brand');
-          } catch (e) {}
-          function goHomeList(e) {
-            if (e) e.preventDefault();
-            try {
-              const parentWin = window.parent;
-              const url = new URL(parentWin.location.href);
-              url.search = '';
-              url.hash = '';
-              parentWin.location.assign(url.toString());
-            } catch (err) {
-              try { window.top.location.assign('/'); } catch (e2) {}
-            }
-          }
-          const homeLink = document.getElementById('brand-home-link');
-          if (homeLink) homeLink.addEventListener('click', goHomeList);
           function openSidebar() {
             const doc = window.parent.document;
             const selectors = [
@@ -3087,9 +3009,26 @@ def _render_brand_header() -> None:
         })();
         </script>
         """,
-        height=78,
+        height=42,
         scrolling=False,
     )
+
+
+def _render_brand_header() -> None:
+    """
+    햄버거 + 로고.
+    로고는 iframe 밖 링크로 두어 읽기 화면(?view=read)에서도 목록(첫 화면)으로 돌아가게 함.
+    """
+    col_ham, col_brand = st.columns([0.55, 9.45], gap="small")
+    with col_ham:
+        _render_hamburger_only()
+    with col_brand:
+        st.markdown(
+            '<a class="rd-brand-home" href="?go_list=1" title="목록으로">라디오 데스크</a>'
+            '<div class="rd-brand-sub">Market News Terminal</div>'
+            '<div class="rd-brand-hint">검증 매체 속보 · 영어는 주소창 오른쪽 번역</div>',
+            unsafe_allow_html=True,
+        )
 
 
 def render_title_with_hamburger(settings: dict[str, Any]) -> dict[str, Any]:
@@ -3126,6 +3065,11 @@ def main() -> None:
     init_session_settings()
     auth_quota.init_auth()
     inject_css()
+
+    # 로고(?go_list=1) 클릭 → 쿼리 제거 후 피드 목록(첫 화면)
+    if "go_list" in st.query_params:
+        st.query_params.clear()
+        st.rerun()
 
     # ---- 읽기 페이지 프로토타입 (?view=read&id=...) ----
     view = str(st.query_params.get("view", "") or "")
