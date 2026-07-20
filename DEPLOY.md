@@ -37,10 +37,23 @@
 # 개인 운영 · 결제 미사용 — 이것만으로 RSS·번역 동작
 GEMINI_API_KEY = "여기에_제미나이_키"
 
+# --- Google Analytics 4 (선택) ---
+# GA4 관리 → 데이터 스트림 → 측정 ID (G-XXXXXXXX)
+# GA_MEASUREMENT_ID = "G-XXXXXXXX"
+
+# --- Firebase Cloud Messaging 웹 푸시 (선택) ---
+# Firebase 콘솔 → 프로젝트 설정 / Cloud Messaging
+# FIREBASE_API_KEY = "AIza..."
+# FIREBASE_AUTH_DOMAIN = "your-project.firebaseapp.com"
+# FIREBASE_PROJECT_ID = "your-project"
+# FIREBASE_MESSAGING_SENDER_ID = "123456789"
+# FIREBASE_APP_ID = "1:123456789:web:abcd"
+# FIREBASE_VAPID_KEY = "BPxxxx..."   # 웹 푸시 인증서(키 쌍) 공개 키
+
 # --- 광고 HTML (선택 · 나중에 붙여넣기) ---
 # 비우면 프로토타입 슬롯이 보입니다. 멀티라인이면 ''' ... ''' 사용.
 # AD_HTML_HOME_TOP = '''<ins class="adsbygoogle" ...></ins><script>...</script>'''
-# AD_HTML_CRYPTO = '''...'''
+# AD_HTML_CRYPTO = '''...'''   # (열 상단 광고는 UI에서 비활성 — Secrets만 보관)
 # AD_HTML_STOCKS = '''...'''
 # AD_HTML_READER_LEFT = '''...'''
 # AD_HTML_READER_RIGHT = '''...'''
@@ -58,6 +71,11 @@ GEMINI_API_KEY = "여기에_제미나이_키"
 # TOSS_SECRET_KEY = "test_sk_..."
 ```
 
+### GA4 · 웹 푸시 메모
+
+- **GA4:** Secrets에 `GA_MEASUREMENT_ID`만 넣으면 앱 로드 시 `gtag`가 `<head>`에 주입됩니다.
+- **FCM:** Secrets에 Firebase 값을 넣고, 저장소의 [`firebase-messaging-sw.js`](firebase-messaging-sw.js) 설정을 채운 뒤 **사이트 루트**(`/firebase-messaging-sw.js`)로 제공해야 백그라운드 알림이 동작합니다. Streamlit Cloud만으로는 SW 서빙이 어려울 수 있어, 커스텀 도메인·정적 호스팅과 함께 쓰는 것을 권장합니다. 프론트는 알림 허용 배너 + 토큰 발급까지 준비되어 있습니다.
+
 6. **Deploy** 클릭
 7. 완료되면 `https://xxxx.streamlit.app` URL이 생깁니다
 
@@ -67,8 +85,8 @@ GEMINI_API_KEY = "여기에_제미나이_키"
 
 | 구분 | 내용 |
 |------|------|
-| **무료** | 검증된 매체 RSS (CRYPTO/STOCKS). 영어는 브라우저 주소창 번역 안내 |
-| **광고** | 홈 슬롯 3곳 + 읽기 좌·우. Secrets `AD_HTML_*` 있으면 렌더, 없으면 프로토타입 |
+| **무료** | 검증된 매체 RSS (가상자산/주식시장). 영어는 브라우저 주소창 번역 안내 |
+| **광고** | 홈 중앙 1곳 + 읽기 좌·우. Secrets `AD_HTML_*` 있으면 렌더, 없으면 프로토타입 |
 | **로그인·결제** | 사용하지 않음 (`ENABLE_PRO_BILLING = False`) |
 | **SIGNALS** | 출시 예정 티저. `X_BEARER_TOKEN` 연동은 **이후 스프린트** |
 

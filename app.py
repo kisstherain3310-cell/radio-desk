@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import base64
 import html
 import json
 import os
@@ -20,6 +21,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import quote, unquote
@@ -49,6 +51,26 @@ API_KEY = _load_gemini_api_key()
 
 Category = Literal["crypto", "stocks"]
 DisplayMode = Literal["both", "en", "ko"]
+
+# UI 표시명 (내부 키 crypto/stocks 는 유지)
+CATEGORY_LABELS: dict[Category, str] = {
+    "crypto": "가상자산",
+    "stocks": "주식시장",
+}
+
+
+def _category_label(category: Category | str) -> str:
+    return CATEGORY_LABELS.get(category, str(category))  # type: ignore[arg-type]
+
+
+@lru_cache(maxsize=1)
+def _brand_logo_data_uri() -> str:
+    """로고 PNG → data URI (크롬 자동번역이 텍스트 로고를 깨뜨리는 것 방지)."""
+    path = Path(__file__).resolve().parent / "logo.png"
+    if not path.is_file():
+        return ""
+    raw = path.read_bytes()
+    return "data:image/png;base64," + base64.b64encode(raw).decode("ascii")
 
 # region: overseas = 해외 매체, domestic = 국내 매체
 CRYPTO_FEEDS = [
@@ -191,6 +213,41 @@ HOT_THRESHOLDS: dict[str, dict[str, int]] = {
     "균형": {"hot_min": 1, "hot_plus_score": 4, "hot_plus_watch": 2},
     "공격적": {"hot_min": 1, "hot_plus_score": 3, "hot_plus_watch": 2},
 }
+
+# 가상자산 전용 HOT 보조 키워드 (CRYPTO에도 STOCKS와 동일 조건으로 HOT 부여)
+CRYPTO_HOT_EXTRA = [
+    "Bitcoin",
+    "BTC",
+    "Ethereum",
+    "ETH",
+    "Solana",
+    "SOL",
+    "XRP",
+    "Ripple",
+    "Dogecoin",
+    "DOGE",
+    "Binance",
+    "Coinbase",
+    "USDT",
+    "USDC",
+    "DeFi",
+    "NFT",
+    "halving",
+    "비트코인",
+    "이더리움",
+    "솔라나",
+    "업비트",
+    "빗썸",
+]
+
+# 속보 상단 고정 시간 (퍼블리시 후 정확히 이 시간 동안)
+BREAKING_PIN_HOURS = 5
+_BREAKING_TITLE_RE = re.compile(
+    r"(?i)\b(breaking|urgent|속보|긴급)\b|^\[?\s*(속보|긴급|BREAKING|URGENT)\s*\]?",
+)
+
+# 세션 클릭으로 HOT 보너스 (단시간 관심도 근사)
+HOT_CLICK_THRESHOLD = 3
 
 TRANSLATE_PROMPTS = {
     "crypto": (
@@ -417,11 +474,21 @@ a.rd-brand-home {
   text-decoration: none !important;
   letter-spacing: -0.04em;
   line-height: 1.15;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   cursor: pointer;
 }
 a.rd-brand-home:hover {
   color: #6e9fff !important;
+  opacity: 0.92;
+}
+a.rd-brand-home img.rd-brand-logo,
+img.rd-brand-logo {
+  height: 42px;
+  width: auto;
+  max-width: 220px;
+  display: block;
+  object-fit: contain;
 }
 .rd-brand-sub {
   font-size: 0.78rem;
@@ -486,6 +553,37 @@ a.rd-brand-home:hover {
 .panel-title.crypto { color: var(--crypto); }
 .panel-title.stocks { color: var(--stocks); }
 
+/* 스크롤 카테고리 토스트 (부모 document에 주입) */
+#rd-cat-toast {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  z-index: 99999;
+  pointer-events: none;
+  padding: 0.55rem 1.15rem;
+  border-radius: 999px;
+  background: rgba(18, 24, 36, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f3f5f9;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+#rd-cat-toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.rd-panel-marker {
+  height: 0;
+  width: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .panel-meta {
   font-size: 0.68rem;
   font-weight: 500;
@@ -525,6 +623,16 @@ a.rd-brand-home:hover {
 
 .news-item.is-new.is-hot {
   box-shadow: inset 3px 0 0 var(--hot);
+}
+
+.news-item.is-breaking {
+  background: rgba(220, 70, 70, 0.1);
+  border-color: rgba(220, 70, 70, 0.45);
+  box-shadow: inset 3px 0 0 #e05a5a;
+}
+
+.news-item.is-breaking.is-hot {
+  border-color: rgba(220, 70, 70, 0.55);
 }
 
 @keyframes new-fade {
@@ -571,6 +679,91 @@ a.rd-brand-home:hover {
   background: rgba(232, 184, 74, 0.14);
   color: var(--hot);
   border: 1px solid rgba(232, 184, 74, 0.32);
+}
+
+.pill-breaking {
+  background: rgba(220, 70, 70, 0.2);
+  color: #ff8f8f;
+  border: 1px solid rgba(220, 70, 70, 0.45);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* HOT 민감도 버튼 · 클릭 가림 방지 */
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker) {
+  position: relative;
+  z-index: 40;
+  isolation: isolate;
+  pointer-events: auto !important;
+  background: rgba(110, 159, 255, 0.1);
+  border: 1.5px solid rgba(110, 159, 255, 0.55) !important;
+  border-radius: 8px;
+  margin: 0.35rem 0 0.55rem 0;
+  box-shadow: inset 0 0 0 1px rgba(110, 159, 255, 0.12);
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker) button,
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker) label,
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker) [role="radiogroup"],
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker) [data-baseweb="radio"] {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 41;
+  cursor: pointer;
+}
+/* height 0~1 components iframe 이 클릭을 가로채지 않게 */
+div[data-testid="stElementContainer"]:has(iframe[height="0"]),
+div[data-testid="stElementContainer"]:has(iframe[height="1"]) {
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* 코인 가격 티커 */
+.rd-ticker-wrap {
+  overflow: hidden;
+  margin: 0.35rem 0 0.65rem 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(126, 200, 168, 0.06);
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+.rd-ticker-track {
+  display: flex;
+  width: max-content;
+  gap: 2rem;
+  padding: 0.45rem 0;
+  animation: rd-ticker-marquee 42s linear infinite;
+}
+.rd-ticker-wrap:hover .rd-ticker-track {
+  animation-play-state: paused;
+}
+.rd-ticker-item {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  color: var(--text-soft);
+}
+.rd-ticker-item .sym {
+  color: var(--crypto);
+  font-weight: 600;
+  margin-right: 0.35rem;
+}
+.rd-ticker-item .up { color: #7ec8a8; }
+.rd-ticker-item .down { color: #e07a7a; }
+@keyframes rd-ticker-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* 소스 전체 선택 행 */
+.rd-source-bulk {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.25rem 0 0.55rem 0;
 }
 
 .meta-line {
@@ -694,13 +887,6 @@ mark.hl {
   color: var(--faint);
   margin: 0 0 0.55rem 0;
   line-height: 1.4;
-}
-div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker) {
-  background: rgba(110, 159, 255, 0.1);
-  border: 1.5px solid rgba(110, 159, 255, 0.55) !important;
-  border-radius: 8px;
-  margin: 0.35rem 0 0.55rem 0;
-  box-shadow: inset 0 0 0 1px rgba(110, 159, 255, 0.12);
 }
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker)
   [data-testid="stCaption"] {
@@ -856,6 +1042,11 @@ section.stMain div.stButton > button[data-testid="baseButton-secondary"]:hover {
   }
   a.rd-brand-home {
     font-size: 1.28rem;
+  }
+  a.rd-brand-home img.rd-brand-logo,
+  img.rd-brand-logo {
+    height: 34px;
+    max-width: 180px;
   }
   .rd-brand-sub { font-size: 0.7rem; }
   .rd-brand-hint { font-size: 0.72rem; margin-bottom: 0.4rem; }
@@ -1082,6 +1273,8 @@ def init_session_settings() -> None:
         st.session_state.translate_api_calls = 0
     if "article_index" not in st.session_state:
         st.session_state.article_index = {}
+    if "article_clicks" not in st.session_state:
+        st.session_state.article_clicks = {}
     _ensure_soft_translate_day()
 
 
@@ -1152,6 +1345,7 @@ def _register_article(row: dict[str, Any], category: Category = "crypto") -> str
         "is_hot": bool(row.get("is_hot")),
         "heat_tier": row.get("heat_tier"),
         "heat_score": row.get("heat_score", 0),
+        "is_breaking": bool(row.get("is_breaking") or row.get("is_breaking_pinned")),
     }
     return aid
 
@@ -1375,6 +1569,8 @@ def render_reader_page(article: dict[str, Any]) -> None:
     show_ads = _show_ads()
 
     pills = ""
+    if article.get("is_breaking"):
+        pills += '<span class="pill pill-breaking">속보</span>'
     if article.get("is_new"):
         pills += '<span class="pill pill-new">NEW</span>'
     tier = article.get("heat_tier")
@@ -1551,6 +1747,18 @@ def _entries_from_feed(feed: dict[str, str]) -> tuple[list[dict[str, Any]], bool
         if not title:
             continue
         published_dt = _parse_published(entry)
+        tags = entry.get("tags") or []
+        tag_terms = []
+        for t in tags:
+            if isinstance(t, dict):
+                tag_terms.append(str(t.get("term") or t.get("label") or ""))
+            else:
+                tag_terms.append(str(t))
+        category_raw = str(entry.get("category") or "").strip()
+        entry_type = ""
+        blob = " ".join(tag_terms + [category_raw]).lower()
+        if any(x in blob for x in ("urgent", "breaking", "속보", "긴급")):
+            entry_type = "urgent"
         out.append(
             {
                 "title": title,
@@ -1558,6 +1766,8 @@ def _entries_from_feed(feed: dict[str, str]) -> tuple[list[dict[str, Any]], bool
                 "source": feed["source"],
                 "published": published_dt,
                 "published_iso": published_dt.isoformat(),
+                "type": entry_type or None,
+                "isBreaking": entry_type == "urgent",
             }
         )
     # HTTP는 성공했는데 파싱이 완전히 깨진 경우
@@ -1574,6 +1784,8 @@ def _normalize_feed_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "link": i["link"],
             "source": i["source"],
             "published_iso": i["published_iso"],
+            "type": i.get("type"),
+            "isBreaking": bool(i.get("isBreaking") or i.get("is_breaking")),
             "id": _item_id(
                 {
                     "title": i["title"],
@@ -1907,12 +2119,22 @@ def _heat_info(
     watchlist: list[str],
     use_signal_keywords: bool,
     hot_sensitivity: str = "공격적",
+    category: Category | str = "crypto",
+    article_id: str | None = None,
 ) -> dict[str, Any]:
-    """Watchlist + market signal keywords → heat score / labels."""
+    """Watchlist + market signal keywords → heat score / labels.
+
+    가상자산·주식시장 모두 동일 임계값·로직을 쓰되, CRYPTO는 전용 키워드를
+    추가로 매칭한다. 세션 내 클릭 수가 임계값 이상이면 HOT 보너스.
+    """
     sensitivity = _normalize_hot_sensitivity(hot_sensitivity)
-    signal_terms = SIGNAL_KEYWORDS_BY_SENSITIVITY.get(
-        sensitivity, SIGNAL_KEYWORDS_BY_SENSITIVITY["공격적"]
+    signal_terms = list(
+        SIGNAL_KEYWORDS_BY_SENSITIVITY.get(
+            sensitivity, SIGNAL_KEYWORDS_BY_SENSITIVITY["공격적"]
+        )
     )
+    if category == "crypto":
+        signal_terms = list(dict.fromkeys(signal_terms + CRYPTO_HOT_EXTRA))
     thresholds = HOT_THRESHOLDS.get(sensitivity, HOT_THRESHOLDS["공격적"])
     watch_hits = _matched_terms(text, watchlist)
     signal_hits = (
@@ -1920,6 +2142,16 @@ def _heat_info(
     )
     # 워치리스트 가중치 더 높게
     score = len(watch_hits) * 2 + len(signal_hits)
+
+    # 단시간 관심도(세션 클릭) 보너스 — CRYPTO/STOCKS 공통
+    clicks = 0
+    if article_id:
+        click_map = st.session_state.get("article_clicks") or {}
+        if isinstance(click_map, dict):
+            clicks = int(click_map.get(article_id, 0) or 0)
+        if clicks >= HOT_CLICK_THRESHOLD:
+            score += 2
+
     if score >= thresholds["hot_plus_score"] or len(watch_hits) >= thresholds[
         "hot_plus_watch"
     ]:
@@ -1937,7 +2169,66 @@ def _heat_info(
         "signal_hits": signal_hits,
         "highlight_terms": highlight_terms,
         "is_hot": tier is not None,
+        "clicks": clicks,
     }
+
+
+def _parse_published_dt(iso: str) -> datetime | None:
+    raw = (iso or "").strip()
+    if not raw:
+        return None
+    try:
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except ValueError:
+        return None
+
+
+def _item_marked_breaking(item: dict[str, Any]) -> bool:
+    """isBreaking / type=urgent 또는 제목 속보 패턴."""
+    if item.get("isBreaking") is True or item.get("is_breaking") is True:
+        return True
+    typ = str(item.get("type") or item.get("urgency") or "").strip().lower()
+    if typ in {"urgent", "breaking", "속보", "긴급"}:
+        return True
+    title = str(item.get("title") or "")
+    if _BREAKING_TITLE_RE.search(title):
+        return True
+    return False
+
+
+def _is_breaking_pinned(
+    item: dict[str, Any],
+    *,
+    now: datetime | None = None,
+) -> bool:
+    """속보 플래그가 있고, 퍼블리시 후 BREAKING_PIN_HOURS 이내일 때만 상단 고정."""
+    if not _item_marked_breaking(item):
+        return False
+    pub = _parse_published_dt(str(item.get("published_iso") or ""))
+    if pub is None:
+        return False
+    ref = now or datetime.now(timezone.utc)
+    if ref.tzinfo is None:
+        ref = ref.replace(tzinfo=timezone.utc)
+    else:
+        ref = ref.astimezone(timezone.utc)
+    age = ref - pub
+    return timedelta(0) <= age <= timedelta(hours=BREAKING_PIN_HOURS)
+
+
+def _record_article_click(article_id: str) -> None:
+    """읽기 페이지 진입 시 세션 클릭 카운트 (+HOT 보너스용)."""
+    aid = (article_id or "").strip()
+    if not aid:
+        return
+    clicks = st.session_state.setdefault("article_clicks", {})
+    if not isinstance(clicks, dict):
+        clicks = {}
+        st.session_state["article_clicks"] = clicks
+    clicks[aid] = int(clicks.get(aid, 0) or 0) + 1
 
 
 def _now_kst() -> datetime:
@@ -2027,6 +2318,238 @@ def _matches_query(item: dict[str, Any], translated: str, query: str) -> bool:
         return True
     # OR: any token matches (substring on the combined blob)
     return any(tok.lower() in blob for tok in tokens)
+
+
+# ---------------------------------------------------------------------------
+# Coin ticker · GA4 · FCM (프론트 세팅)
+# ---------------------------------------------------------------------------
+
+_TICKER_MOCK = [
+    {"id": "bitcoin", "symbol": "BTC", "usd": 67420.0, "usd_24h_change": 1.84},
+    {"id": "ethereum", "symbol": "ETH", "usd": 3482.0, "usd_24h_change": -0.62},
+    {"id": "solana", "symbol": "SOL", "usd": 178.4, "usd_24h_change": 3.21},
+    {"id": "ripple", "symbol": "XRP", "usd": 0.62, "usd_24h_change": 0.45},
+    {"id": "dogecoin", "symbol": "DOGE", "usd": 0.158, "usd_24h_change": -1.12},
+]
+
+_TICKER_ID_TO_SYM = {
+    "bitcoin": "BTC",
+    "ethereum": "ETH",
+    "solana": "SOL",
+    "ripple": "XRP",
+    "dogecoin": "DOGE",
+}
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def fetch_coin_ticker_prices() -> list[dict[str, Any]]:
+    """CoinGecko 무료 API · 실패 시 임시 데이터."""
+    ids = ",".join(_TICKER_ID_TO_SYM.keys())
+    url = (
+        "https://api.coingecko.com/api/v3/simple/price"
+        f"?ids={ids}&vs_currencies=usd&include_24hr_change=true"
+    )
+    try:
+        resp = requests.get(url, timeout=6)
+        resp.raise_for_status()
+        data = resp.json()
+        out: list[dict[str, Any]] = []
+        for cid, sym in _TICKER_ID_TO_SYM.items():
+            row = data.get(cid) or {}
+            if "usd" not in row:
+                continue
+            out.append(
+                {
+                    "id": cid,
+                    "symbol": sym,
+                    "usd": float(row["usd"]),
+                    "usd_24h_change": float(row.get("usd_24h_change") or 0.0),
+                }
+            )
+        return out or list(_TICKER_MOCK)
+    except Exception:
+        return list(_TICKER_MOCK)
+
+
+def _format_ticker_price(usd: float) -> str:
+    if usd >= 1000:
+        return f"${usd:,.0f}"
+    if usd >= 1:
+        return f"${usd:,.2f}"
+    return f"${usd:.4f}"
+
+
+def _render_coin_price_ticker() -> None:
+    """홈 최상단 코인 가격 마퀴(좌→우 흐르는) 티커."""
+    items = fetch_coin_ticker_prices()
+    chips: list[str] = []
+    for it in items:
+        chg = float(it.get("usd_24h_change") or 0.0)
+        cls = "up" if chg >= 0 else "down"
+        sign = "+" if chg >= 0 else ""
+        chips.append(
+            f'<span class="rd-ticker-item">'
+            f'<span class="sym">{html.escape(str(it["symbol"]))}</span>'
+            f'{html.escape(_format_ticker_price(float(it["usd"])))} '
+            f'<span class="{cls}">{sign}{chg:.2f}%</span>'
+            f"</span>"
+        )
+    # 끊김 없이 루프되도록 두 번 이어붙임
+    track = "".join(chips + chips)
+    st.markdown(
+        f'<div class="rd-ticker-wrap" aria-label="주요 코인 가격">'
+        f'<div class="rd-ticker-track">{track}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _inject_ga4() -> None:
+    """GA4 측정 ID가 Secrets/환경에 있으면 gtag 삽입."""
+    mid = _load_config_str("GA_MEASUREMENT_ID")
+    if not mid:
+        return
+    mid_js = json.dumps(mid)
+    components.html(
+        f"""
+        <script>
+        (function() {{
+          const doc = window.parent.document;
+          const mid = {mid_js};
+          if (doc.documentElement.dataset.rdGa4 === mid) return;
+          doc.documentElement.dataset.rdGa4 = mid;
+          const s1 = doc.createElement('script');
+          s1.async = true;
+          s1.src = 'https://www.googletagmanager.com/gtag/js?id=' + mid;
+          doc.head.appendChild(s1);
+          const s2 = doc.createElement('script');
+          s2.text = "window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}"
+            + "gtag('js', new Date());gtag('config', '" + mid + "');";
+          doc.head.appendChild(s2);
+        }})();
+        </script>
+        """,
+        height=1,
+        scrolling=False,
+    )
+
+
+def _inject_web_push_prompt() -> None:
+    """
+    브라우저 알림 허용 유도 + FCM 프론트 뼈대.
+    Secrets: FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID,
+             FIREBASE_MESSAGING_SENDER_ID, FIREBASE_APP_ID, FIREBASE_VAPID_KEY
+    """
+    cfg = {
+        "apiKey": _load_config_str("FIREBASE_API_KEY"),
+        "authDomain": _load_config_str("FIREBASE_AUTH_DOMAIN"),
+        "projectId": _load_config_str("FIREBASE_PROJECT_ID"),
+        "messagingSenderId": _load_config_str("FIREBASE_MESSAGING_SENDER_ID"),
+        "appId": _load_config_str("FIREBASE_APP_ID"),
+        "vapidKey": _load_config_str("FIREBASE_VAPID_KEY"),
+    }
+    has_fcm = all(
+        cfg[k]
+        for k in (
+            "apiKey",
+            "projectId",
+            "messagingSenderId",
+            "appId",
+            "vapidKey",
+        )
+    )
+    cfg_json = json.dumps(cfg)
+    has_fcm_js = "true" if has_fcm else "false"
+    components.html(
+        f"""
+        <script type="module">
+        (async function () {{
+          const doc = window.parent.document;
+          if (doc.documentElement.dataset.rdPushBound === '1') return;
+          doc.documentElement.dataset.rdPushBound = '1';
+
+          const cfg = {cfg_json};
+          const hasFcm = {has_fcm_js};
+
+          function ensureBanner() {{
+            if (doc.getElementById('rd-push-banner')) return;
+            if (typeof Notification === 'undefined') return;
+            if (Notification.permission === 'granted' || Notification.permission === 'denied') return;
+
+            const bar = doc.createElement('div');
+            bar.id = 'rd-push-banner';
+            bar.style.cssText = [
+              'position:fixed','bottom:16px','left:50%','transform:translateX(-50%)',
+              'z-index:99998','max-width:92vw','padding:0.7rem 1rem','border-radius:10px',
+              'background:rgba(18,24,36,0.96)','border:1px solid rgba(110,159,255,0.35)',
+              'color:#e6e8ee','font:500 0.85rem/1.4 Noto Sans KR,sans-serif',
+              'display:flex','gap:0.75rem','align-items:center','box-shadow:0 10px 30px rgba(0,0,0,.4)'
+            ].join(';');
+            bar.innerHTML = '<span>속보 알림을 받으려면 브라우저 알림을 허용해 주세요.</span>';
+            const ok = doc.createElement('button');
+            ok.textContent = '허용';
+            ok.style.cssText = 'cursor:pointer;border:0;border-radius:6px;padding:0.35rem 0.7rem;background:#6e9fff;color:#0d0f13;font-weight:700;';
+            const no = doc.createElement('button');
+            no.textContent = '나중에';
+            no.style.cssText = 'cursor:pointer;border:0;background:transparent;color:#9aa3b2;';
+            ok.onclick = async function () {{
+              try {{
+                const perm = await Notification.requestPermission();
+                if (perm === 'granted' && hasFcm) {{
+                  await initFcm();
+                }}
+              }} catch (e) {{}}
+              bar.remove();
+            }};
+            no.onclick = function () {{ bar.remove(); }};
+            bar.appendChild(ok);
+            bar.appendChild(no);
+            doc.body.appendChild(bar);
+          }}
+
+          async function initFcm() {{
+            if (!hasFcm) return;
+            try {{
+              const {{ initializeApp }} = await import('https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js');
+              const {{ getMessaging, getToken, onMessage }} = await import('https://www.gstatic.com/firebasejs/10.14.0/firebase-messaging.js');
+              const app = initializeApp({{
+                apiKey: cfg.apiKey,
+                authDomain: cfg.authDomain || undefined,
+                projectId: cfg.projectId,
+                messagingSenderId: cfg.messagingSenderId,
+                appId: cfg.appId,
+              }});
+              const messaging = getMessaging(app);
+              // 서비스워커는 동일 오리진에 /firebase-messaging-sw.js 가 있어야 함
+              // Streamlit Cloud에서는 커스텀 도메인·정적 호스팅과 함께 배치하세요.
+              const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js').catch(function(){{ return null; }});
+              const token = await getToken(messaging, {{
+                vapidKey: cfg.vapidKey,
+                serviceWorkerRegistration: reg || undefined,
+              }});
+              if (token) {{
+                console.info('[라디오 데스크] FCM token', token);
+                try {{ window.parent.localStorage.setItem('rd_fcm_token', token); }} catch (e) {{}}
+              }}
+              onMessage(messaging, function (payload) {{
+                const title = (payload.notification && payload.notification.title) || '라디오 데스크 속보';
+                const body = (payload.notification && payload.notification.body) || '';
+                try {{ new Notification(title, {{ body: body }}); }} catch (e) {{}}
+              }});
+            }} catch (err) {{
+              console.warn('[라디오 데스크] FCM init skipped', err);
+            }}
+          }}
+
+          ensureBanner();
+          if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && hasFcm) {{
+            initFcm();
+          }}
+        }})();
+        </script>
+        """,
+        height=1,
+        scrolling=False,
+    )
 
 
 def inject_css() -> None:
@@ -2128,9 +2651,18 @@ def prepare_rows(
         if has_query and not _matches_query(item, title, query):
             continue
 
-        heat = _heat_info(title, watchlist, use_signal_keywords, sensitivity)
         item_id = item.get("id") or _item_id(item)
         is_new = item_id not in seen if st.session_state.seeded_seen else False
+        breaking_pinned = _is_breaking_pinned(item, now=now_utc)
+
+        heat = _heat_info(
+            title,
+            watchlist,
+            use_signal_keywords,
+            sensitivity,
+            category=category,
+            article_id=item_id,
+        )
 
         rows.append(
             {
@@ -2143,6 +2675,8 @@ def prepare_rows(
                 "hits": heat["highlight_terms"],
                 "watch_hits": heat["watch_hits"],
                 "signal_hits": heat["signal_hits"],
+                "is_breaking": _item_marked_breaking(item),
+                "is_breaking_pinned": breaking_pinned,
                 "id": item_id,
                 "fetched_at": fetched_at,
             }
@@ -2152,6 +2686,7 @@ def prepare_rows(
 
     def _sort_key(r: dict[str, Any]) -> tuple[Any, ...]:
         return (
+            1 if r.get("is_breaking_pinned") else 0,
             r["heat_score"],
             1 if r["is_new"] else 0,
             r["item"].get("published_iso", ""),
@@ -2160,8 +2695,12 @@ def prepare_rows(
     if sort_hot_first:
         rows.sort(key=_sort_key, reverse=True)
     else:
+        # 최신순이어도 활성 속보는 최상단 고정
         rows.sort(
-            key=lambda r: r["item"].get("published_iso", ""),
+            key=lambda r: (
+                1 if r.get("is_breaking_pinned") else 0,
+                r["item"].get("published_iso", ""),
+            ),
             reverse=True,
         )
 
@@ -2192,7 +2731,14 @@ def prepare_rows(
                 row["translated"] = cached if cached else title
 
             blob = f"{title} {row['translated']}"
-            heat = _heat_info(blob, watchlist, use_signal_keywords, sensitivity)
+            heat = _heat_info(
+                blob,
+                watchlist,
+                use_signal_keywords,
+                sensitivity,
+                category=category,
+                article_id=str(row.get("id") or ""),
+            )
             row["is_hot"] = heat["is_hot"] or row["is_hot"]
             row["heat_tier"] = heat["tier"] or row["heat_tier"]
             row["heat_score"] = max(row["heat_score"], heat["score"])
@@ -2216,7 +2762,10 @@ def prepare_rows(
         rows.sort(key=_sort_key, reverse=True)
     else:
         rows.sort(
-            key=lambda r: r["item"].get("published_iso", ""),
+            key=lambda r: (
+                1 if r.get("is_breaking_pinned") else 0,
+                r["item"].get("published_iso", ""),
+            ),
             reverse=True,
         )
 
@@ -2252,6 +2801,8 @@ def _news_card_html(row: dict[str, Any], mode: DisplayMode, _watchlist: list[str
         ko_html = html.escape(translated)
 
     pills = ""
+    if row.get("is_breaking_pinned") or row.get("is_breaking"):
+        pills += '<span class="pill pill-breaking">속보</span>'
     if row["is_new"]:
         pills += '<span class="pill pill-new">NEW</span>'
     tier = row.get("heat_tier")
@@ -2313,6 +2864,8 @@ def _news_card_html(row: dict[str, Any], mode: DisplayMode, _watchlist: list[str
         classes.append("is-new")
     if row["is_hot"]:
         classes.append("is-hot")
+    if row.get("is_breaking_pinned") or row.get("is_breaking"):
+        classes.append("is-breaking")
 
     return (
         f'<div class="{" ".join(classes)}">'
@@ -2395,7 +2948,7 @@ def _on_media_region_change() -> None:
 
 
 def _render_global_feed_controls(settings: dict[str, Any]) -> None:
-    """전역 컨트롤 · HOT 민감도 + 매체 (한 박스, CRYPTO/STOCKS 공통)."""
+    """전역 컨트롤 · HOT 민감도(버튼) + 매체 (한 박스)."""
     hot_key = "hot_sensitivity_radio"
     region_key = "media_region_radio"
     if hot_key not in st.session_state:
@@ -2407,26 +2960,37 @@ def _render_global_feed_controls(settings: dict[str, Any]) -> None:
             settings.get("media_region", "해외")
         )
 
-    # 한 박스 안에서 HOT | 매체 가로 배치 (CRYPTO/STOCKS 열과 별개임을 문구로 명시)
+    current_hot = _normalize_hot_sensitivity(
+        st.session_state.get(hot_key, settings.get("hot_sensitivity", "공격적"))
+    )
+
     with st.container(border=True):
         st.markdown(
             '<div class="global-feed-kicker">공통 필터</div>'
             '<div class="global-feed-sub">'
-            "아래 설정은 CRYPTO · STOCKS 두 패널에 동시에 적용됩니다."
+            "아래 설정은 가상자산 · 주식시장 두 패널에 동시에 적용됩니다."
             "</div>",
             unsafe_allow_html=True,
         )
         c_hot, c_region = st.columns(2, gap="medium")
         with c_hot:
             st.caption("HOT 민감도")
-            st.radio(
-                "HOT 민감도",
-                list(HOT_SENSITIVITY_OPTIONS),
-                horizontal=True,
-                key=hot_key,
-                label_visibility="collapsed",
-                on_change=_on_hot_sensitivity_change,
-            )
+            # radio 대신 버튼 — z-index/iframe에 가려 클릭이 안 되던 이슈 완화
+            bcols = st.columns(len(HOT_SENSITIVITY_OPTIONS), gap="small")
+            for col, opt in zip(bcols, HOT_SENSITIVITY_OPTIONS):
+                with col:
+                    is_active = opt == current_hot
+                    if st.button(
+                        opt,
+                        key=f"hot_sens_btn_{opt}",
+                        use_container_width=True,
+                        type="primary" if is_active else "secondary",
+                    ):
+                        if opt != current_hot:
+                            st.session_state[hot_key] = opt
+                            settings["hot_sensitivity"] = opt
+                            st.session_state.settings = settings
+                            st.rerun()
         with c_region:
             st.caption("매체")
             st.radio(
@@ -2519,12 +3083,13 @@ def render_feed_panel_head(
     ad_label: str | None = None,
 ) -> None:
     """패널 제목·소스 캡션 (HOT/매체 컨트롤은 제목과 정렬 사이에 전역 배치)."""
-    if ad_label:
-        _render_home_ad(f"col-{css_class}", ad_label)
+    # ad_label: 하위 호환용. 홈은 중앙(home-top) 광고만 사용 — 열 상단 광고는 렌더하지 않음.
+    _ = ad_label
     st.markdown(
+        f'<div class="rd-panel-marker" data-rd-cat="{html.escape(title)}" aria-hidden="true"></div>'
         f'<div class="panel-head {css_class}">'
-        f'<div class="panel-title {css_class}">{title}</div>'
-        f'<div class="panel-meta">{sources_caption}</div>'
+        f'<div class="panel-title {css_class}">{html.escape(title)}</div>'
+        f'<div class="panel-meta">{html.escape(sources_caption)}</div>'
         f"</div>",
         unsafe_allow_html=True,
     )
@@ -2612,7 +3177,7 @@ def _render_signals_teaser() -> None:
             "<div class=\"signals-title\">X 인플루언서·시그널 속보</div>"
             "<div class=\"signals-body\">"
             "X 인플루언서·시그널은 준비 중입니다. "
-            "지금은 위쪽 CRYPTO · STOCKS 매체 RSS 속보를 이용해 주세요."
+            "지금은 위쪽 가상자산 · 주식시장 매체 RSS 속보를 이용해 주세요."
             "</div></div>",
             unsafe_allow_html=True,
         )
@@ -2685,6 +3250,16 @@ def _update_seen_and_alerts(
 # Sidebar UI
 # ---------------------------------------------------------------------------
 
+def _set_all_sources_enabled(settings: dict[str, Any], enabled: bool) -> None:
+    """사이드바 언론사(소스) 체크박스를 전부 켜거나 끈다."""
+    enabled_map = settings.setdefault("sources_enabled", {})
+    for src in ALL_SOURCES:
+        enabled_map[src] = bool(enabled)
+        st.session_state[f"feed_{src}"] = bool(enabled)
+    settings["sources_enabled"] = enabled_map
+    st.session_state.settings = settings
+
+
 def _translation_status_lines(
     enable_translation: bool,
     translate_limit: int,
@@ -2734,9 +3309,9 @@ def _rss_status_line(health: dict[str, Any], is_stale: bool) -> str:
     c_n = int(health.get("crypto_count") or 0)
     s_n = int(health.get("stocks_count") or 0)
     line = (
-        f"RSS · Crypto {c_n}건 ({c_ok}소스 성공"
+        f"RSS · 가상자산 {c_n}건 ({c_ok}소스 성공"
         + (f"/{c_fail}실패" if c_fail else "")
-        + f") · Stocks {s_n}건 ({s_ok}소스 성공"
+        + f") · 주식시장 {s_n}건 ({s_ok}소스 성공"
         + (f"/{s_fail}실패" if s_fail else "")
         + ")"
     )
@@ -2858,7 +3433,7 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     # 1) 검색 안내 (실제 필터는 각 패널 제목 아래)
     st.markdown('<div class="sidebar-label">검색</div>', unsafe_allow_html=True)
     st.caption(
-        "키워드 필터는 CRYPTO / STOCKS 각 패널에서 따로 사용할 수 있습니다. "
+        "키워드 필터는 가상자산 / 주식시장 각 패널에서 따로 사용할 수 있습니다. "
         "콤마·공백은 OR입니다."
     )
 
@@ -2955,7 +3530,7 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
         key="use_signal_keywords",
     )
     st.caption(
-        "목록 정렬(최신순·HOT순)은 CRYPTO / STOCKS 각각 제목 아래에서 "
+        "목록 정렬(최신순·HOT순)은 가상자산 / 주식시장 각각 제목 아래에서 "
         "따로 바꿀 수 있습니다."
     )
 
@@ -2964,7 +3539,27 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     st.markdown('<div class="sidebar-label">소스</div>', unsafe_allow_html=True)
     st.caption("체크 = 표시 · 🔔 = 소리 알림 대상")
 
-    st.markdown("**Crypto**")
+    bulk_all, bulk_none = st.columns(2, gap="small")
+    with bulk_all:
+        if st.button(
+            "전체 선택",
+            key="sources_select_all",
+            use_container_width=True,
+            help="모든 언론사 소스를 켭니다",
+        ):
+            _set_all_sources_enabled(settings, True)
+            st.rerun()
+    with bulk_none:
+        if st.button(
+            "전체 해제",
+            key="sources_deselect_all",
+            use_container_width=True,
+            help="모든 언론사 소스를 끕니다",
+        ):
+            _set_all_sources_enabled(settings, False)
+            st.rerun()
+
+    st.markdown("**가상자산**")
     for src in [f["source"] for f in CRYPTO_FEEDS]:
         c1, c2 = st.columns([2.2, 1])
         with c1:
@@ -2981,7 +3576,7 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
                 help=f"{src} 알림",
             )
 
-    st.markdown("**Stocks**")
+    st.markdown("**주식시장**")
     for src in [f["source"] for f in STOCK_FEEDS]:
         c1, c2 = st.columns([2.2, 1])
         with c1:
@@ -3175,17 +3770,140 @@ def _render_brand_header() -> None:
     """
     햄버거 + 로고.
     로고는 iframe 밖 링크로 두어 읽기 화면(?view=read)에서도 목록(첫 화면)으로 돌아가게 함.
+    텍스트 대신 이미지 로고를 써서 크롬 자동번역이 브랜드명을 깨뜨리지 않게 함.
     """
     col_ham, col_brand = st.columns([0.55, 9.45], gap="small")
     with col_ham:
         _render_hamburger_only()
     with col_brand:
+        logo_uri = _brand_logo_data_uri()
+        if logo_uri:
+            brand_inner = (
+                f'<img class="rd-brand-logo" src="{logo_uri}" '
+                f'alt="라디오 데스크" />'
+            )
+        else:
+            # logo.png 없을 때만 텍스트 폴백
+            brand_inner = "라디오 데스크"
         st.markdown(
-            '<a class="rd-brand-home" href="?go_list=1" title="목록으로">라디오 데스크</a>'
+            f'<a class="rd-brand-home notranslate" href="?go_list=1" '
+            f'title="목록으로" translate="no">{brand_inner}</a>'
             '<div class="rd-brand-sub">Market News Terminal</div>'
             '<div class="rd-brand-hint">검증 매체 속보 · 영어는 원문 보기 후 번역</div>',
             unsafe_allow_html=True,
         )
+
+
+def _render_category_scroll_toast() -> None:
+    """스크롤 시 현재 카테고리(가상자산/주식시장) 토스트 — fade in 후 2.5초 fade out."""
+    components.html(
+        """
+        <script>
+        (function () {
+          const doc = window.parent.document;
+          if (typeof doc.__rdCatToastCleanup === 'function') {
+            try { doc.__rdCatToastCleanup(); } catch (e) {}
+          }
+
+          let toast = doc.getElementById('rd-cat-toast');
+          if (!toast) {
+            toast = doc.createElement('div');
+            toast.id = 'rd-cat-toast';
+            toast.setAttribute('aria-live', 'polite');
+            toast.setAttribute('role', 'status');
+            doc.body.appendChild(toast);
+          }
+
+          if (!doc.getElementById('rd-cat-toast-style')) {
+            const style = doc.createElement('style');
+            style.id = 'rd-cat-toast-style';
+            style.textContent = [
+              '#rd-cat-toast{position:fixed;top:14px;left:50%;',
+              'transform:translateX(-50%) translateY(-8px);z-index:99999;',
+              'pointer-events:none;padding:0.55rem 1.15rem;border-radius:999px;',
+              'background:rgba(18,24,36,0.92);border:1px solid rgba(255,255,255,0.14);',
+              'color:#f3f5f9;font-size:0.88rem;font-weight:700;letter-spacing:0.02em;',
+              'box-shadow:0 8px 28px rgba(0,0,0,0.35);opacity:0;',
+              'transition:opacity .35s ease,transform .35s ease;}',
+              '#rd-cat-toast.is-visible{opacity:1;transform:translateX(-50%) translateY(0);}'
+            ].join('');
+            doc.head.appendChild(style);
+          }
+
+          let hideTimer = null;
+          let lastCat = '';
+          let io = null;
+          let retryTimer = null;
+
+          function showCat(label) {
+            if (!label) return;
+            toast.textContent = label;
+            toast.classList.add('is-visible');
+            if (hideTimer) clearTimeout(hideTimer);
+            hideTimer = setTimeout(function () {
+              toast.classList.remove('is-visible');
+            }, 2500);
+          }
+
+          function bindObserver() {
+            const markers = Array.from(doc.querySelectorAll('.rd-panel-marker[data-rd-cat]'));
+            if (!markers.length) return false;
+
+            io = new IntersectionObserver(function (entries) {
+              let best = null;
+              let bestRatio = 0;
+              entries.forEach(function (en) {
+                if (!en.isIntersecting) return;
+                if (en.intersectionRatio >= bestRatio) {
+                  bestRatio = en.intersectionRatio;
+                  best = en.target;
+                }
+              });
+              if (!best) return;
+              const cat = best.getAttribute('data-rd-cat') || '';
+              if (cat && cat !== lastCat) {
+                lastCat = cat;
+                showCat(cat);
+              }
+            }, {
+              root: null,
+              threshold: [0.15, 0.35, 0.55, 0.75],
+              rootMargin: '-12% 0px -45% 0px'
+            });
+
+            markers.forEach(function (el) { io.observe(el); });
+            markers.forEach(function (m) {
+              const head = m.nextElementSibling;
+              if (head && head.classList && head.classList.contains('panel-head')) {
+                head.setAttribute('data-rd-cat', m.getAttribute('data-rd-cat') || '');
+                io.observe(head);
+              }
+            });
+            return true;
+          }
+
+          if (!bindObserver()) {
+            let tries = 0;
+            retryTimer = setInterval(function () {
+              tries += 1;
+              if (bindObserver() || tries > 20) {
+                clearInterval(retryTimer);
+                retryTimer = null;
+              }
+            }, 400);
+          }
+
+          doc.__rdCatToastCleanup = function () {
+            if (retryTimer) clearInterval(retryTimer);
+            if (hideTimer) clearTimeout(hideTimer);
+            if (io) io.disconnect();
+          };
+        })();
+        </script>
+        """,
+        height=1,
+        scrolling=False,
+    )
 
 
 def render_title_with_hamburger(settings: dict[str, Any]) -> dict[str, Any]:
@@ -3223,6 +3941,8 @@ def main() -> None:
     init_session_settings()
     auth_quota.init_auth()
     inject_css()
+    _inject_ga4()
+    _inject_web_push_prompt()
 
     # 로고(?go_list=1) 클릭 → 쿼리 제거 후 피드 목록(첫 화면)
     if "go_list" in st.query_params:
@@ -3234,6 +3954,7 @@ def main() -> None:
     if view == "read":
         raw_id = st.query_params.get("id", "")
         article_id = unquote(str(raw_id or ""))
+        _record_article_click(article_id)
         # 읽기 화면에서는 60s 전체 리프레시 부담을 줄임
         settings = st.session_state.settings
         with st.sidebar:
@@ -3256,6 +3977,7 @@ def main() -> None:
         mode, settings = render_sidebar()
 
     settings = render_title_with_hamburger(settings)
+    _render_coin_price_ticker()
     query_crypto = _resolve_panel_query("crypto")
     query_stocks = _resolve_panel_query("stocks")
 
@@ -3354,20 +4076,19 @@ def main() -> None:
     ]
 
     # 1) 패널 제목 → 2) HOT/매체(정렬 직전) → 3) 정렬·피드
+    # 광고: 상단 중앙(home-top)만 유지. 열 상단(가상자산/주식시장) 광고는 제거.
     head_crypto, head_stocks = st.columns(2, gap="medium")
     with head_crypto:
         render_feed_panel_head(
-            title="CRYPTO",
+            title=_category_label("crypto"),
             css_class="crypto",
             sources_caption=" · ".join(active_crypto) or "No sources",
-            ad_label="Crypto",
         )
     with head_stocks:
         render_feed_panel_head(
-            title="STOCKS",
+            title=_category_label("stocks"),
             css_class="stocks",
             sources_caption=" · ".join(active_stocks) or "No sources",
-            ad_label="Stocks",
         )
 
     _render_global_feed_controls(settings)
@@ -3394,6 +4115,7 @@ def main() -> None:
             category="stocks",
         )
 
+    _render_category_scroll_toast()
     _render_signals_teaser()
 
 
