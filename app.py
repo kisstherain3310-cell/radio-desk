@@ -59,18 +59,46 @@ CATEGORY_LABELS: dict[Category, str] = {
 }
 
 
+# 브랜드 로고 — logo_file/ 우선, 없으면 루트 logo.png
+BRAND_LOGO_CANDIDATES = (
+    "logo_file/radio-desk-on-dark.png",       # 다크 배경 헤더용 (권장)
+    "logo_file/radio-desk-primary-lockup.png",
+    "logo_file/radio-desk-stacked-lockup.png",
+    "logo_file/radio-desk-icon-mark.png",
+    "logo_file/radio-desk-app-icon.png",
+    "logo.png",
+)
+
+
 def _category_label(category: Category | str) -> str:
     return CATEGORY_LABELS.get(category, str(category))  # type: ignore[arg-type]
+
+
+def _resolve_brand_logo_path() -> Path | None:
+    root = Path(__file__).resolve().parent
+    for rel in BRAND_LOGO_CANDIDATES:
+        path = root / rel
+        if path.is_file():
+            return path
+    return None
 
 
 @lru_cache(maxsize=1)
 def _brand_logo_data_uri() -> str:
     """로고 PNG → data URI (크롬 자동번역이 텍스트 로고를 깨뜨리는 것 방지)."""
-    path = Path(__file__).resolve().parent / "logo.png"
-    if not path.is_file():
+    path = _resolve_brand_logo_path()
+    if path is None:
         return ""
     raw = path.read_bytes()
-    return "data:image/png;base64," + base64.b64encode(raw).decode("ascii")
+    suffix = path.suffix.lower()
+    mime = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+        ".gif": "image/gif",
+    }.get(suffix, "image/png")
+    return f"data:{mime};base64," + base64.b64encode(raw).decode("ascii")
 
 # region: overseas = 해외 매체, domestic = 국내 매체
 CRYPTO_FEEDS = [
@@ -242,8 +270,13 @@ CRYPTO_HOT_EXTRA = [
 
 # 속보 상단 고정 시간 (퍼블리시 후 정확히 이 시간 동안)
 BREAKING_PIN_HOURS = 5
+# 제목 앞머리/대괄호 속보 표기만 인정 (본문 중간 '속보' 오탐 완화)
 _BREAKING_TITLE_RE = re.compile(
-    r"(?i)\b(breaking|urgent|속보|긴급)\b|^\[?\s*(속보|긴급|BREAKING|URGENT)\s*\]?",
+    r"(?i)^(?:\s*[\[【\(]\s*)?(?:breaking|urgent|속보|긴급)(?:\s*[\]】\):：\-–—]\s*|\s+)",
+)
+# 중복 판별용 — 속보 접두어 제거
+_BREAKING_PREFIX_STRIP_RE = re.compile(
+    r"(?i)^(?:\s*[\[【\(]?\s*(?:breaking|urgent|속보|긴급)\s*[\]】\):：\-–—]?\s*)+",
 )
 
 # 세션 클릭으로 HOT 보너스 (단시간 관심도 근사)
@@ -484,9 +517,9 @@ a.rd-brand-home:hover {
 }
 a.rd-brand-home img.rd-brand-logo,
 img.rd-brand-logo {
-  height: 42px;
+  height: 48px;
   width: auto;
-  max-width: 220px;
+  max-width: 280px;
   display: block;
   object-fit: contain;
 }
@@ -1045,8 +1078,8 @@ section.stMain div.stButton > button[data-testid="baseButton-secondary"]:hover {
   }
   a.rd-brand-home img.rd-brand-logo,
   img.rd-brand-logo {
-    height: 34px;
-    max-width: 180px;
+    height: 38px;
+    max-width: 200px;
   }
   .rd-brand-sub { font-size: 0.7rem; }
   .rd-brand-hint { font-size: 0.72rem; margin-bottom: 0.4rem; }
@@ -2187,7 +2220,7 @@ def _parse_published_dt(iso: str) -> datetime | None:
 
 
 def _item_marked_breaking(item: dict[str, Any]) -> bool:
-    """isBreaking / type=urgent 또는 제목 속보 패턴."""
+    """isBreaking / type=urgent 또는 제목 앞머리 속보 패턴."""
     if item.get("isBreaking") is True or item.get("is_breaking") is True:
         return True
     typ = str(item.get("type") or item.get("urgency") or "").strip().lower()
@@ -2197,6 +2230,63 @@ def _item_marked_breaking(item: dict[str, Any]) -> bool:
     if _BREAKING_TITLE_RE.search(title):
         return True
     return False
+
+
+def _title_dedupe_key(title: str) -> str:
+    t = _BREAKING_PREFIX_STRIP_RE.sub("", str(title or ""))
+    t = re.sub(r"\s+", " ", t).strip().lower()
+    return t
+
+
+def _row_dedupe_prefer(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
+    """중복 중 하나를 고름 — 속보 고정 > 점수 > 최신."""
+    def rank(r: dict[str, Any]) -> tuple[Any, ...]:
+        return (
+            1 if r.get("is_breaking_pinned") else 0,
+            1 if r.get("is_breaking") else 0,
+            int(r.get("heat_score") or 0),
+            1 if r.get("is_new") else 0,
+            str((r.get("item") or {}).get("published_iso") or ""),
+        )
+
+    return a if rank(a) >= rank(b) else b
+
+
+def _dedupe_feed_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    동일 뉴스 중복 제거.
+    - 같은 링크
+    - 또는 속보 접두어를 제거한 제목이 같으면(매체만 다른 동일 속보) 1건만 유지
+    """
+    by_link: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+
+    for row in rows:
+        item = row.get("item") or {}
+        link = str(item.get("link") or "").strip().lower().rstrip("/")
+        key = f"link:{link}" if link else f"id:{row.get('id')}"
+        if key not in by_link:
+            by_link[key] = row
+            order.append(key)
+        else:
+            by_link[key] = _row_dedupe_prefer(by_link[key], row)
+
+    # 제목 기준 2차 병합 (링크는 다르지만 같은 속보 문구)
+    by_title: dict[str, dict[str, Any]] = {}
+    title_order: list[str] = []
+    for key in order:
+        row = by_link[key]
+        item = row.get("item") or {}
+        tkey = _title_dedupe_key(str(item.get("title") or ""))
+        if not tkey:
+            tkey = f"__empty__:{row.get('id')}"
+        if tkey not in by_title:
+            by_title[tkey] = row
+            title_order.append(tkey)
+        else:
+            by_title[tkey] = _row_dedupe_prefer(by_title[tkey], row)
+
+    return [by_title[k] for k in title_order]
 
 
 def _is_breaking_pinned(
@@ -2684,6 +2774,9 @@ def prepare_rows(
         if not has_query and len(rows) >= pool_cap:
             break
 
+    # 동일 속보·동일 기사 중복 제거 (여러 매체 RSS 교차 수집 대응)
+    rows = _dedupe_feed_rows(rows)
+
     def _sort_key(r: dict[str, Any]) -> tuple[Any, ...]:
         return (
             1 if r.get("is_breaking_pinned") else 0,
@@ -2768,6 +2861,9 @@ def prepare_rows(
             ),
             reverse=True,
         )
+
+    # 번역·검색 후에도 동일 제목이 남을 수 있어 한 번 더 정리
+    rows = _dedupe_feed_rows(rows)
 
     return rows[:limit]
 
