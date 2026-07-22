@@ -54,8 +54,8 @@ DisplayMode = Literal["both", "en", "ko"]
 
 # UI 표시명 (내부 키 crypto/stocks 는 유지)
 CATEGORY_LABELS: dict[Category, str] = {
-    "crypto": "가상자산",
-    "stocks": "주식시장",
+    "crypto": "코인",
+    "stocks": "주식",
 }
 
 
@@ -244,7 +244,7 @@ HOT_THRESHOLDS: dict[str, dict[str, int]] = {
     "공격적": {"hot_min": 1, "hot_plus_score": 3, "hot_plus_watch": 2},
 }
 
-# 가상자산 전용 HOT 보조 키워드 (CRYPTO에도 STOCKS와 동일 조건으로 HOT 부여)
+# 코인 전용 HOT 보조 키워드 (CRYPTO에도 STOCKS와 동일 조건으로 HOT 부여)
 CRYPTO_HOT_EXTRA = [
     "Bitcoin",
     "BTC",
@@ -2159,7 +2159,7 @@ def _heat_info(
 ) -> dict[str, Any]:
     """Watchlist + market signal keywords → heat score / labels.
 
-    가상자산·주식시장 모두 동일 임계값·로직을 쓰되, CRYPTO는 전용 키워드를
+    코인·주식 모두 동일 임계값·로직을 쓰되, CRYPTO는 전용 키워드를
     추가로 매칭한다. 세션 내 클릭 수가 임계값 이상이면 HOT 보너스.
     """
     sensitivity = _normalize_hot_sensitivity(hot_sensitivity)
@@ -3066,7 +3066,7 @@ def _render_global_feed_controls(settings: dict[str, Any]) -> None:
         st.markdown(
             '<div class="global-feed-kicker">공통 필터</div>'
             '<div class="global-feed-sub">'
-            "아래 설정은 가상자산 · 주식시장 두 패널에 동시에 적용됩니다."
+            "아래 설정은 코인 · 주식 두 패널에 동시에 적용됩니다."
             "</div>",
             unsafe_allow_html=True,
         )
@@ -3275,7 +3275,7 @@ def _render_signals_teaser() -> None:
             "<div class=\"signals-title\">X 인플루언서·시그널 속보</div>"
             "<div class=\"signals-body\">"
             "X 인플루언서·시그널은 준비 중입니다. "
-            "지금은 위쪽 가상자산 · 주식시장 매체 RSS 속보를 이용해 주세요."
+            "지금은 위쪽 코인 · 주식 매체 RSS 속보를 이용해 주세요."
             "</div></div>",
             unsafe_allow_html=True,
         )
@@ -3407,9 +3407,9 @@ def _rss_status_line(health: dict[str, Any], is_stale: bool) -> str:
     c_n = int(health.get("crypto_count") or 0)
     s_n = int(health.get("stocks_count") or 0)
     line = (
-        f"RSS · 가상자산 {c_n}건 ({c_ok}소스 성공"
+        f"RSS · 코인 {c_n}건 ({c_ok}소스 성공"
         + (f"/{c_fail}실패" if c_fail else "")
-        + f") · 주식시장 {s_n}건 ({s_ok}소스 성공"
+        + f") · 주식 {s_n}건 ({s_ok}소스 성공"
         + (f"/{s_fail}실패" if s_fail else "")
         + ")"
     )
@@ -3531,7 +3531,7 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     # 1) 검색 안내 (실제 필터는 각 패널 제목 아래)
     st.markdown('<div class="sidebar-label">검색</div>', unsafe_allow_html=True)
     st.caption(
-        "키워드 필터는 가상자산 / 주식시장 각 패널에서 따로 사용할 수 있습니다. "
+        "키워드 필터는 코인 / 주식 각 패널에서 따로 사용할 수 있습니다. "
         "콤마·공백은 OR입니다."
     )
 
@@ -3628,7 +3628,7 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
         key="use_signal_keywords",
     )
     st.caption(
-        "목록 정렬(최신순·HOT순)은 가상자산 / 주식시장 각각 제목 아래에서 "
+        "목록 정렬(최신순·HOT순)은 코인 / 주식 각각 제목 아래에서 "
         "따로 바꿀 수 있습니다."
     )
 
@@ -3657,7 +3657,7 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
             _set_all_sources_enabled(settings, False)
             st.rerun()
 
-    st.markdown("**가상자산**")
+    st.markdown("**코인**")
     for src in [f["source"] for f in CRYPTO_FEEDS]:
         c1, c2 = st.columns([2.2, 1])
         with c1:
@@ -3674,7 +3674,7 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
                 help=f"{src} 알림",
             )
 
-    st.markdown("**주식시장**")
+    st.markdown("**주식**")
     for src in [f["source"] for f in STOCK_FEEDS]:
         c1, c2 = st.columns([2.2, 1])
         with c1:
@@ -3893,7 +3893,7 @@ def _render_brand_header() -> None:
 
 
 def _render_category_scroll_toast() -> None:
-    """스크롤 시 현재 카테고리(가상자산/주식시장) 토스트 — fade in 후 2.5초 fade out."""
+    """스크롤 시 현재 카테고리(코인/주식) 토스트 — fade in 후 2.5초 fade out."""
     components.html(
         """
         <script>
@@ -4174,7 +4174,7 @@ def main() -> None:
     ]
 
     # 1) 패널 제목 → 2) HOT/매체(정렬 직전) → 3) 정렬·피드
-    # 광고: 상단 중앙(home-top)만 유지. 열 상단(가상자산/주식시장) 광고는 제거.
+    # 광고: 상단 중앙(home-top)만 유지. 열 상단(코인/주식) 광고는 제거.
     head_crypto, head_stocks = st.columns(2, gap="medium")
     with head_crypto:
         render_feed_panel_head(
