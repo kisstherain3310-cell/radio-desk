@@ -59,9 +59,11 @@ CATEGORY_LABELS: dict[Category, str] = {
 }
 
 
-# 브랜드 로고 — logo_file/ 우선, 없으면 루트 logo.png
+# 브랜드 로고 — logo_file/ 및 루트 투명 로고 우선
 BRAND_LOGO_CANDIDATES = (
-    "logo_file/radio-desk-on-dark.png",       # 다크 배경 헤더용 (권장)
+    "logo_file/radio-desk-logo-transparent-on-dark.png",  # 다크 UI용(글자 밝게)
+    "radio-desk-logo-transparent.png",                    # 원본 투명 로고
+    "logo_file/radio-desk-on-dark.png",
     "logo_file/radio-desk-primary-lockup.png",
     "logo_file/radio-desk-stacked-lockup.png",
     "logo_file/radio-desk-icon-mark.png",
