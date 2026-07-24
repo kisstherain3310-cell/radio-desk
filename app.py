@@ -1406,6 +1406,17 @@ def init_session_settings() -> None:
     if "settings" not in st.session_state:
         st.session_state.settings = load_settings_file()
     st.session_state.settings = _ensure_source_keys(st.session_state.settings)
+    # 이전 다크/라이트 라디오 키 제거 (토글로 교체)
+    st.session_state.pop("ui_theme_radio", None)
+    st.session_state.pop("header_theme_btn_다크", None)
+    st.session_state.pop("header_theme_btn_라이트", None)
+    if "ui_theme_is_light" not in st.session_state:
+        st.session_state["ui_theme_is_light"] = (
+            _normalize_ui_theme(
+                st.session_state.settings.get("ui_theme", "다크")
+            )
+            == "라이트"
+        )
     if not SHOW_APP_TRANSLATION_UI:
         st.session_state.settings["enable_translation"] = False
     if "seen_ids" not in st.session_state:
@@ -2761,19 +2772,28 @@ def _inject_web_push_prompt() -> None:
 
 
 def _current_ui_theme() -> str:
-    """위젯(헤더/사이드바) 값이 있으면 우선, 없으면 settings."""
-    label = st.session_state.get("ui_theme_radio")
-    if label in THEME_OPTIONS:
-        return str(label)
+    """토글(ui_theme_is_light) 우선, 없으면 settings."""
+    if "ui_theme_is_light" in st.session_state:
+        return "라이트" if bool(st.session_state["ui_theme_is_light"]) else "다크"
     settings = st.session_state.get("settings") or {}
     return _normalize_ui_theme(settings.get("ui_theme", "다크"))
 
 
+def _sync_ui_theme_to_settings(theme: str | None = None) -> str:
+    theme = _normalize_ui_theme(theme or _current_ui_theme())
+    settings = st.session_state.get("settings")
+    if isinstance(settings, dict):
+        settings["ui_theme"] = theme
+        st.session_state.settings = settings
+    # 위젯 생성 전에만 초기화 (이미 있으면 건드리지 않음)
+    if "ui_theme_is_light" not in st.session_state:
+        st.session_state["ui_theme_is_light"] = theme == "라이트"
+    return theme
+
+
 def inject_css() -> None:
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-    theme = _current_ui_theme()
-    if isinstance(st.session_state.get("settings"), dict):
-        st.session_state.settings["ui_theme"] = theme
+    theme = _sync_ui_theme_to_settings()
     theme_attr = "light" if theme == "라이트" else "dark"
     # 부모 document 에 테마 속성 적용 (CSS 변수 전환)
     components.html(
@@ -3683,23 +3703,9 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     # 2) 표시 모드
     st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
     st.markdown('<div class="sidebar-label">표시</div>', unsafe_allow_html=True)
-
-    theme_key = "ui_theme_radio"
-    if theme_key not in st.session_state:
-        st.session_state[theme_key] = _normalize_ui_theme(
-            settings.get("ui_theme", "다크")
-        )
-    st.caption("보기 모드")
-    picked_theme = st.radio(
-        "보기 모드",
-        list(THEME_OPTIONS),
-        horizontal=True,
-        key=theme_key,
-        label_visibility="collapsed",
-        help="다크 모드 / 라이트 모드",
-    )
-    settings["ui_theme"] = _normalize_ui_theme(picked_theme)
-    st.session_state.settings = settings
+    theme = _current_ui_theme()
+    settings["ui_theme"] = theme
+    st.caption(f"보기 모드 · 현재 {'라이트' if theme == '라이트' else '다크'} (상단 토글로 변경)")
 
     if SHOW_APP_TRANSLATION_UI:
         mode_label = st.radio(
@@ -4029,20 +4035,20 @@ def _render_hamburger_only() -> None:
 
 def _render_brand_header() -> None:
     """
-    햄버거 + 로고 + 보기 모드(다크/라이트).
+    햄버거 + 로고 + 다크/라이트 토글.
     로고는 iframe 밖 링크로 두어 읽기 화면(?view=read)에서도 목록(첫 화면)으로 돌아가게 함.
     텍스트 대신 이미지 로고를 써서 크롬 자동번역이 브랜드명을 깨뜨리지 않게 함.
     """
-    settings = st.session_state.get("settings") or {}
-    theme = _current_ui_theme()
-    settings["ui_theme"] = theme
-    st.session_state.settings = settings
+    theme = _sync_ui_theme_to_settings()
 
-    col_ham, col_brand, col_theme = st.columns([0.55, 7.6, 2.0], gap="small")
+    col_ham, col_brand, col_theme = st.columns([0.55, 8.2, 1.4], gap="small")
     with col_ham:
         _render_hamburger_only()
     with col_brand:
-        logo_uri = _brand_logo_data_uri(theme)
+        try:
+            logo_uri = _brand_logo_data_uri(theme)
+        except Exception:
+            logo_uri = ""
         if logo_uri:
             brand_inner = (
                 f'<img class="rd-brand-logo" src="{logo_uri}" '
@@ -4059,24 +4065,16 @@ def _render_brand_header() -> None:
         )
     with col_theme:
         st.markdown(
-            '<div class="rd-theme-hint">보기 모드</div>',
+            '<div class="rd-theme-hint">다크 ↔ 라이트</div>',
             unsafe_allow_html=True,
         )
-        tcols = st.columns(2, gap="small")
-        for col, opt in zip(tcols, THEME_OPTIONS):
-            with col:
-                active = opt == theme
-                if st.button(
-                    opt,
-                    key=f"header_theme_btn_{opt}",
-                    use_container_width=True,
-                    type="primary" if active else "secondary",
-                ):
-                    if opt != theme:
-                        settings["ui_theme"] = opt
-                        st.session_state.settings = settings
-                        st.session_state["ui_theme_radio"] = opt
-                        st.rerun()
+        is_light = st.toggle(
+            "라이트 모드",
+            key="ui_theme_is_light",
+            help="끄면 다크 모드, 켜면 라이트 모드",
+            label_visibility="collapsed",
+        )
+        _sync_ui_theme_to_settings("라이트" if is_light else "다크")
 
 
 def _render_category_scroll_toast() -> None:
