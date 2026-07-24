@@ -119,6 +119,14 @@ UI_TEXT: dict[str, dict[str, str]] = {
         "press_crypto": "Crypto",
         "press_stocks": "Stocks",
         "quotes": "Quotes",
+        "rsi_title": "종목 RSI (추정)",
+        "rsi_pick": "시세 티커 종목 선택",
+        "rsi_disclaimer": "투자 조언 아님 · RSI 14일 기반 과매도/과매수 추정 (공식 F&G 아님)",
+        "rsi_hint_fear": "RSI 낮음 · 과매도(공포) 쪽으로 보는 기술 해석",
+        "rsi_hint_greed": "RSI 높음 · 과매수(탐욕) 쪽으로 보는 기술 해석",
+        "rsi_hint_neutral": "RSI 중립 구간",
+        "rsi_fail": "이 종목의 RSI를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "rsi_value": "RSI {v:.1f}",
     },
     "en": {
         "lang_hint": "KO / EN",
@@ -149,6 +157,14 @@ UI_TEXT: dict[str, dict[str, str]] = {
         "press_crypto": "Crypto",
         "press_stocks": "Stocks",
         "quotes": "Quotes",
+        "rsi_title": "Asset RSI (proxy)",
+        "rsi_pick": "Pick a ticker asset",
+        "rsi_disclaimer": "Not advice · RSI(14) oversold/overbought proxy (not official F&G)",
+        "rsi_hint_fear": "Low RSI · often read as oversold / fear",
+        "rsi_hint_greed": "High RSI · often read as overbought / greed",
+        "rsi_hint_neutral": "RSI neutral zone",
+        "rsi_fail": "Couldn’t load RSI for this asset. Try again shortly.",
+        "rsi_value": "RSI {v:.1f}",
     },
 }
 
@@ -1285,6 +1301,32 @@ html[data-rd-theme="light"] .rd-press-rail.is-stocks {
   color: var(--faint);
 }
 html[data-rd-theme="light"] .rd-sentiment {
+  background: rgba(20, 28, 45, 0.03);
+}
+
+/* 종목 RSI 선택 패널 */
+.rd-rsi-panel {
+  margin: 0.15rem 0 0.7rem 0;
+  padding: 0.65rem 0.75rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.015);
+}
+.rd-rsi-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0 0 0.35rem 0;
+}
+.rd-rsi-note {
+  font-size: 0.66rem;
+  color: var(--faint);
+  margin-top: 0.35rem;
+}
+html[data-rd-theme="light"] .rd-rsi-panel {
   background: rgba(20, 28, 45, 0.03);
 }
 @keyframes rd-ticker-marquee {
@@ -3115,11 +3157,11 @@ def _matches_query(item: dict[str, Any], translated: str, query: str) -> bool:
 # ---------------------------------------------------------------------------
 
 _COIN_TICKER_MOCK = [
-    {"symbol": "BTC", "price": 67420.0, "change_pct": 1.84, "currency": "USD"},
-    {"symbol": "ETH", "price": 3482.0, "change_pct": -0.62, "currency": "USD"},
-    {"symbol": "SOL", "price": 178.4, "change_pct": 3.21, "currency": "USD"},
-    {"symbol": "XRP", "price": 0.62, "change_pct": 0.45, "currency": "USD"},
-    {"symbol": "DOGE", "price": 0.158, "change_pct": -1.12, "currency": "USD"},
+    {"id": "bitcoin", "symbol": "BTC", "name": "Bitcoin", "price": 67420.0, "change_pct": 1.84, "currency": "USD"},
+    {"id": "ethereum", "symbol": "ETH", "name": "Ethereum", "price": 3482.0, "change_pct": -0.62, "currency": "USD"},
+    {"id": "solana", "symbol": "SOL", "name": "Solana", "price": 178.4, "change_pct": 3.21, "currency": "USD"},
+    {"id": "ripple", "symbol": "XRP", "name": "XRP", "price": 0.62, "change_pct": 0.45, "currency": "USD"},
+    {"id": "dogecoin", "symbol": "DOGE", "name": "Dogecoin", "price": 0.158, "change_pct": -1.12, "currency": "USD"},
 ]
 
 _COIN_STABLE_IDS = frozenset(
@@ -3340,6 +3382,7 @@ def fetch_coin_ticker_prices() -> list[dict[str, Any]]:
                 chg = row.get("price_change_percentage_24h_in_currency")
             out.append(
                 {
+                    "id": cid,
                     "symbol": sym,
                     "name": str(row.get("name") or "").strip(),
                     "price": float(price),
@@ -3677,6 +3720,176 @@ def _render_market_sentiment(category: Category) -> None:
         f'<span class="rd-sentiment-hint">{html.escape(hint)}</span>'
         f'<span class="rd-sentiment-note">{html.escape(t("sentiment_disclaimer"))}</span>'
         f"</div></div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _calc_rsi(closes: list[float], period: int = 14) -> float | None:
+    """Wilder RSI. closes 최신이 마지막."""
+    if len(closes) < period + 1:
+        return None
+    changes = [closes[i] - closes[i - 1] for i in range(1, len(closes))]
+    gains = [max(c, 0.0) for c in changes]
+    losses = [max(-c, 0.0) for c in changes]
+    avg_gain = sum(gains[:period]) / period
+    avg_loss = sum(losses[:period]) / period
+    for i in range(period, len(changes)):
+        avg_gain = (avg_gain * (period - 1) + gains[i]) / period
+        avg_loss = (avg_loss * (period - 1) + losses[i]) / period
+    if avg_loss <= 1e-12:
+        return 100.0
+    rs = avg_gain / avg_loss
+    return 100.0 - (100.0 / (1.0 + rs))
+
+
+def _rsi_band(rsi: float) -> str:
+    if rsi <= 20:
+        return "extreme_fear"
+    if rsi <= 30:
+        return "fear"
+    if rsi <= 70:
+        return "neutral"
+    if rsi <= 80:
+        return "greed"
+    return "extreme_greed"
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def fetch_coin_daily_closes(gecko_id: str) -> list[float]:
+    """CoinGecko market_chart · 약 30일 종가."""
+    gid = (gecko_id or "").strip()
+    if not gid:
+        return []
+    try:
+        resp = requests.get(
+            f"https://api.coingecko.com/api/v3/coins/{gid}/market_chart",
+            params={"vs_currency": "usd", "days": "60"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        prices = (resp.json() or {}).get("prices") or []
+        closes = [float(p[1]) for p in prices if isinstance(p, (list, tuple)) and len(p) >= 2]
+        return closes
+    except Exception:
+        return []
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def fetch_yahoo_daily_closes(symbol: str) -> list[float]:
+    """Yahoo 일봉 close."""
+    sym = (symbol or "").strip()
+    if not sym:
+        return []
+    try:
+        resp = requests.get(
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}",
+            params={"interval": "1d", "range": "3mo"},
+            headers=_YAHOO_HEADERS,
+            timeout=10,
+        )
+        resp.raise_for_status()
+        result = (resp.json().get("chart") or {}).get("result") or []
+        if not result:
+            return []
+        quote = ((result[0].get("indicators") or {}).get("quote") or [{}])[0]
+        closes_raw = quote.get("close") or []
+        return [float(c) for c in closes_raw if c is not None]
+    except Exception:
+        return []
+
+
+def _crypto_rsi_options() -> list[tuple[str, str, str]]:
+    """(value_key, label, gecko_id)."""
+    items = fetch_coin_ticker_prices()
+    out: list[tuple[str, str, str]] = []
+    seen: set[str] = set()
+    for it in items:
+        sym = str(it.get("symbol") or "").upper()
+        gid = str(it.get("id") or "").strip()
+        name = str(it.get("name") or sym).strip()
+        if not sym or not gid or sym in seen:
+            continue
+        seen.add(sym)
+        out.append((f"crypto:{gid}", f"{sym} · {name}", gid))
+    if not out:
+        for it in _COIN_TICKER_MOCK:
+            sym = str(it["symbol"])
+            gid = str(it.get("id") or "")
+            out.append((f"crypto:{gid}", f"{sym} · {it.get('name', sym)}", gid))
+    return out
+
+
+def _stock_rsi_options() -> list[tuple[str, str, str]]:
+    """(value_key, label, yahoo_symbol)."""
+    out: list[tuple[str, str, str]] = []
+    for yahoo, label in list(_STOCK_TICKER_KR) + list(_STOCK_TICKER_US):
+        out.append((f"stock:{yahoo}", f"{label} · {yahoo}", yahoo))
+    return out
+
+
+def _render_asset_rsi_panel(category: Category) -> None:
+    """시세 티커 종목 select → RSI(14) 구간 + 작은 계기판."""
+    options = (
+        _crypto_rsi_options() if category == "crypto" else _stock_rsi_options()
+    )
+    if not options:
+        return
+
+    st.markdown(
+        f'<div class="rd-rsi-panel"><div class="rd-rsi-title">'
+        f'{html.escape(t("rsi_title"))}</div>',
+        unsafe_allow_html=True,
+    )
+    keys = [o[0] for o in options]
+    labels = {o[0]: o[1] for o in options}
+    payload = {o[0]: o[2] for o in options}
+    pick_key = f"rsi_asset_pick_{category}"
+    if pick_key not in st.session_state or st.session_state[pick_key] not in keys:
+        st.session_state[pick_key] = keys[0]
+
+    c_pick, c_gauge = st.columns([1.35, 1.65], gap="medium")
+    with c_pick:
+        chosen = st.selectbox(
+            t("rsi_pick"),
+            keys,
+            key=pick_key,
+            format_func=lambda k: labels.get(k, k),
+        )
+    asset_id = payload.get(chosen, "")
+    if category == "crypto":
+        closes = fetch_coin_daily_closes(asset_id)
+        needle = "#e8b84a"
+    else:
+        closes = fetch_yahoo_daily_closes(asset_id)
+        needle = "#9aa8d8"
+
+    rsi = _calc_rsi(closes)
+    with c_gauge:
+        if rsi is None:
+            st.caption(t("rsi_fail"))
+        else:
+            band = _rsi_band(rsi)
+            tone = _sentiment_tone(band)
+            if band in {"extreme_fear", "fear"}:
+                hint = t("rsi_hint_fear")
+            elif band in {"extreme_greed", "greed"}:
+                hint = t("rsi_hint_greed")
+            else:
+                hint = t("rsi_hint_neutral")
+            gauge = _sentiment_gauge_svg(rsi, needle_color=needle)
+            st.markdown(
+                f'<div class="rd-sentiment is-{tone}" style="margin:0;padding:0.35rem 0.5rem;">'
+                f'<div class="rd-sentiment-gauge-wrap">{gauge}</div>'
+                f'<div class="rd-sentiment-copy">'
+                f'<span class="rd-sentiment-score">'
+                f'{html.escape(t("rsi_value", v=rsi))}</span>'
+                f'<span class="rd-sentiment-class">{html.escape(t(band))}</span>'
+                f'<span class="rd-sentiment-hint">{html.escape(hint)}</span>'
+                f"</div></div>",
+                unsafe_allow_html=True,
+            )
+    st.markdown(
+        f'<div class="rd-rsi-note">{html.escape(t("rsi_disclaimer"))}</div></div>',
         unsafe_allow_html=True,
     )
 
@@ -5586,6 +5799,7 @@ def main() -> None:
     if bool(settings.get("show_ticker", True)):
         _render_market_price_ticker(active_cat)
     _render_market_sentiment(active_cat)
+    _render_asset_rsi_panel(active_cat)
 
     render_feed_panel_head(
         title=_category_label(active_cat),
