@@ -934,38 +934,125 @@ div[data-testid="stElementContainer"]:has(iframe[height="1"]) {
 .rd-ticker-item .up { color: #7ec8a8; }
 .rd-ticker-item .down { color: #e07a7a; }
 
-/* 취합 언론사 티커 */
-.rd-press-ticker.rd-ticker-wrap {
-  margin: 0.15rem 0 0.55rem 0;
-  border-color: var(--line);
-  background: rgba(110, 159, 255, 0.05);
-}
-.rd-press-ticker .rd-ticker-track {
+/* 취합 언론사 — 듀얼 채널 (코인/주식 톤 분리) */
+.rd-press-rail {
+  display: flex;
+  align-items: stretch;
   gap: 0;
-  animation-duration: 55s;
-  padding: 0.38rem 0;
+  margin: 0.2rem 0 0.55rem 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  min-height: 2.1rem;
+  position: relative;
+  overflow: hidden;
 }
-.rd-press-ticker .rd-ticker-item {
-  font-family: 'Noto Sans KR', sans-serif;
-  font-size: 0.76rem;
+.rd-press-rail::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--muted);
+}
+.rd-press-rail.is-crypto {
+  background: linear-gradient(
+    90deg,
+    rgba(126, 200, 168, 0.1) 0%,
+    rgba(126, 200, 168, 0.03) 28%,
+    transparent 70%
+  );
+}
+.rd-press-rail.is-crypto::before {
+  background: var(--crypto);
+}
+.rd-press-rail.is-stocks {
+  background: linear-gradient(
+    90deg,
+    rgba(154, 168, 216, 0.12) 0%,
+    rgba(154, 168, 216, 0.03) 28%,
+    transparent 70%
+  );
+}
+.rd-press-rail.is-stocks::before {
+  background: var(--stocks);
+}
+.rd-press-rail-label {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 0 0.85rem 0 0.85rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.64rem;
   font-weight: 500;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  user-select: none;
+  color: var(--faint);
+}
+.rd-press-rail.is-crypto .rd-press-rail-label {
+  color: var(--crypto);
+}
+.rd-press-rail.is-stocks .rd-press-rail-label {
+  color: var(--stocks);
+}
+.rd-press-rail-viewport {
+  flex: 1 1 auto;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+}
+.rd-press-rail-track {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  gap: 0;
+  padding: 0.45rem 0;
+  animation: rd-ticker-marquee 48s linear infinite;
+}
+.rd-press-rail:hover .rd-press-rail-track {
+  animation-play-state: paused;
+}
+.rd-press-name {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  padding: 0 0.1rem;
   color: var(--text-soft);
-  padding: 0 0.85rem;
-  border-right: 1px solid var(--line);
 }
-.rd-press-ticker .rd-ticker-item:last-child {
-  border-right: none;
+.rd-press-rail.is-crypto .rd-press-name {
+  color: var(--crypto);
 }
-.rd-press-ticker .rd-ticker-item .press-tag {
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  margin-right: 0.35rem;
+.rd-press-rail.is-stocks .rd-press-name {
+  color: var(--stocks);
 }
-html[data-rd-theme="light"] .rd-press-ticker.rd-ticker-wrap {
-  background: rgba(20, 40, 80, 0.03);
+.rd-press-sep {
+  color: var(--faint);
+  opacity: 0.45;
+  padding: 0 0.75rem;
+  font-size: 0.72rem;
+  user-select: none;
+}
+html[data-rd-theme="light"] .rd-press-rail.is-crypto {
+  background: linear-gradient(
+    90deg,
+    rgba(31, 138, 100, 0.09) 0%,
+    rgba(31, 138, 100, 0.025) 28%,
+    transparent 70%
+  );
+}
+html[data-rd-theme="light"] .rd-press-rail.is-stocks {
+  background: linear-gradient(
+    90deg,
+    rgba(74, 95, 168, 0.1) 0%,
+    rgba(74, 95, 168, 0.025) 28%,
+    transparent 70%
+  );
 }
 @keyframes rd-ticker-marquee {
   from { transform: translateX(0); }
@@ -2801,45 +2888,54 @@ def _render_coin_price_ticker() -> None:
 def _active_press_sources(
     enabled: dict[str, Any],
     media_region: str,
-) -> list[tuple[str, str]]:
-    """표시 중인 취합 언론사 (카테고리 태그, 이름)."""
-    out: list[tuple[str, str]] = []
+    category: Category | None = None,
+) -> list[str]:
+    """표시 중인 취합 언론사 이름 (카테고리·매체 필터 반영)."""
+    if category == "crypto":
+        feeds = CRYPTO_FEEDS
+    elif category == "stocks":
+        feeds = STOCK_FEEDS
+    else:
+        feeds = CRYPTO_FEEDS + STOCK_FEEDS
+    out: list[str] = []
     seen: set[str] = set()
-    for cat, feeds in (("코인", CRYPTO_FEEDS), ("주식", STOCK_FEEDS)):
-        for f in feeds:
-            src = str(f["source"])
-            if src in seen:
-                continue
-            if not enabled.get(src, True):
-                continue
-            if not _source_matches_media_region(src, media_region):
-                continue
-            seen.add(src)
-            out.append((cat, src))
+    for f in feeds:
+        src = str(f["source"])
+        if src in seen:
+            continue
+        if not enabled.get(src, True):
+            continue
+        if not _source_matches_media_region(src, media_region):
+            continue
+        seen.add(src)
+        out.append(src)
     return out
 
 
 def _render_press_sources_ticker(
     enabled: dict[str, Any],
     media_region: str,
+    category: Category,
 ) -> None:
-    """취합 언론사 이름을 흐르는 티커로 표시."""
-    sources = _active_press_sources(enabled, media_region)
+    """취합 언론사 — 선택 탭(코인/주식)에 맞는 듀얼 채널 마퀴."""
+    sources = _active_press_sources(enabled, media_region, category)
     if not sources:
         return
+    cat = "crypto" if category == "crypto" else "stocks"
+    label = "Crypto" if cat == "crypto" else "Stocks"
     chips: list[str] = []
-    for tag, name in sources:
+    for name in sources:
         chips.append(
-            f'<span class="rd-ticker-item">'
-            f'<span class="press-tag">{html.escape(tag)}</span>'
-            f"{html.escape(name)}"
-            f"</span>"
+            f'<span class="rd-press-name">{html.escape(name)}</span>'
+            f'<span class="rd-press-sep" aria-hidden="true">·</span>'
         )
     track = "".join(chips + chips)
     st.markdown(
-        f'<div class="rd-ticker-wrap rd-press-ticker" '
-        f'aria-label="취합 언론사">'
-        f'<div class="rd-ticker-track">{track}</div></div>',
+        f'<div class="rd-press-rail is-{cat}" aria-label="{html.escape(label)} 취합 언론사">'
+        f'<div class="rd-press-rail-label">{html.escape(label)}</div>'
+        f'<div class="rd-press-rail-viewport">'
+        f'<div class="rd-press-rail-track">{track}</div>'
+        f"</div></div>",
         unsafe_allow_html=True,
     )
 
@@ -4623,9 +4719,6 @@ def main() -> None:
         if enabled.get(s, True) and _source_matches_media_region(s, media_region)
     ]
 
-    # 취합 언론사 티커 (본문 RSS 요약 배너 대신)
-    _render_press_sources_ticker(enabled, media_region)
-
     # 코인 | 주식 탭 (한 카테고리만 전체 폭)
     tab_key = "home_category_tab"
     if tab_key not in st.session_state:
@@ -4647,6 +4740,9 @@ def main() -> None:
         active_cat = "crypto"
         active_rows = crypto_rows
         active_sources = active_crypto
+
+    # 선택 탭에 맞는 언론사만 듀얼 채널 티커로 표시
+    _render_press_sources_ticker(enabled, media_region, active_cat)
 
     render_feed_panel_head(
         title=_category_label(active_cat),
