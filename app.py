@@ -1038,6 +1038,36 @@ div[data-testid="stElementContainer"]:has(iframe[height="1"]) {
   font-size: 0.72rem;
   user-select: none;
 }
+.rd-price-rail {
+  margin-top: 0.05rem;
+  margin-bottom: 0.65rem;
+}
+.rd-price-rail .rd-price-track {
+  gap: 1.35rem;
+  animation-duration: 58s;
+}
+.rd-price-rail .rd-price-item {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.74rem;
+  color: var(--text-soft);
+  white-space: nowrap;
+  border-right: none;
+  padding: 0;
+}
+.rd-price-rail .rd-price-item .sym {
+  font-weight: 600;
+  margin-right: 0.4rem;
+}
+.rd-price-rail.is-crypto .rd-price-item .sym {
+  color: var(--crypto);
+}
+.rd-price-rail.is-stocks .rd-price-item .sym {
+  color: var(--stocks);
+}
+.rd-price-rail .rd-price-item .up { color: #7ec8a8; }
+.rd-price-rail .rd-price-item .down { color: #e07a7a; }
+html[data-rd-theme="light"] .rd-price-rail .rd-price-item .up { color: #1f8a64; }
+html[data-rd-theme="light"] .rd-price-rail .rd-price-item .down { color: #c44b4b; }
 html[data-rd-theme="light"] .rd-press-rail.is-crypto {
   background: linear-gradient(
     90deg,
@@ -1584,7 +1614,7 @@ def _default_settings() -> dict[str, Any]:
         "hot_sensitivity": "공격적",
         "media_region": "해외",
         "ui_theme": "라이트",
-        "show_ticker": False,
+        "show_ticker": True,
         "use_signal_keywords": True,
         # 번역은 기본 OFF. ON이어도 HOT/NEW만 배치 1회로 호출해 할당량 절약
         "enable_translation": False,
@@ -1654,7 +1684,12 @@ def _ensure_source_keys(settings: dict[str, Any]) -> dict[str, Any]:
     else:
         settings.setdefault("media_region", "해외")
     settings["ui_theme"] = _normalize_ui_theme(settings.get("ui_theme", "라이트"))
-    settings.setdefault("show_ticker", False)
+    # 카테고리별 시세 티커 도입 — 이전 기본(OFF)에서 ON으로 한 번 올림
+    if not settings.get("_price_ticker_v2"):
+        settings["show_ticker"] = True
+        settings["_price_ticker_v2"] = True
+    else:
+        settings.setdefault("show_ticker", True)
     return settings
 
 
@@ -2803,86 +2838,268 @@ def _matches_query(item: dict[str, Any], translated: str, query: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Coin ticker · GA4 · FCM (프론트 세팅)
+# Market price tickers (코인 / 주식) · GA4 · FCM
 # ---------------------------------------------------------------------------
 
-_TICKER_MOCK = [
-    {"id": "bitcoin", "symbol": "BTC", "usd": 67420.0, "usd_24h_change": 1.84},
-    {"id": "ethereum", "symbol": "ETH", "usd": 3482.0, "usd_24h_change": -0.62},
-    {"id": "solana", "symbol": "SOL", "usd": 178.4, "usd_24h_change": 3.21},
-    {"id": "ripple", "symbol": "XRP", "usd": 0.62, "usd_24h_change": 0.45},
-    {"id": "dogecoin", "symbol": "DOGE", "usd": 0.158, "usd_24h_change": -1.12},
+_COIN_TICKER_MOCK = [
+    {"symbol": "BTC", "price": 67420.0, "change_pct": 1.84, "currency": "USD"},
+    {"symbol": "ETH", "price": 3482.0, "change_pct": -0.62, "currency": "USD"},
+    {"symbol": "SOL", "price": 178.4, "change_pct": 3.21, "currency": "USD"},
+    {"symbol": "XRP", "price": 0.62, "change_pct": 0.45, "currency": "USD"},
+    {"symbol": "DOGE", "price": 0.158, "change_pct": -1.12, "currency": "USD"},
 ]
 
-_TICKER_ID_TO_SYM = {
-    "bitcoin": "BTC",
-    "ethereum": "ETH",
-    "solana": "SOL",
-    "ripple": "XRP",
-    "dogecoin": "DOGE",
+_COIN_STABLE_IDS = frozenset(
+    {
+        "tether",
+        "usd-coin",
+        "ethena-usde",
+        "first-digital-usd",
+        "dai",
+        "usds",
+        "paypal-usd",
+    }
+)
+
+# 코스피 대표 20
+_STOCK_TICKER_KR: tuple[tuple[str, str], ...] = (
+    ("005930.KS", "삼성전자"),
+    ("000660.KS", "SK하이닉스"),
+    ("373220.KS", "LG에너지"),
+    ("207940.KS", "삼바"),
+    ("005380.KS", "현대차"),
+    ("000270.KS", "기아"),
+    ("068270.KS", "셀트리온"),
+    ("105560.KS", "KB금융"),
+    ("055550.KS", "신한지주"),
+    ("035420.KS", "NAVER"),
+    ("035720.KS", "카카오"),
+    ("006400.KS", "삼성SDI"),
+    ("051910.KS", "LG화학"),
+    ("012330.KS", "현대모비스"),
+    ("028260.KS", "삼성물산"),
+    ("066570.KS", "LG전자"),
+    ("003550.KS", "LG"),
+    ("096770.KS", "SK이노"),
+    ("034730.KS", "SK"),
+    ("015760.KS", "한국전력"),
+)
+
+# 미국 대표 30
+_STOCK_TICKER_US: tuple[tuple[str, str], ...] = (
+    ("AAPL", "AAPL"),
+    ("MSFT", "MSFT"),
+    ("NVDA", "NVDA"),
+    ("GOOGL", "GOOGL"),
+    ("AMZN", "AMZN"),
+    ("META", "META"),
+    ("TSLA", "TSLA"),
+    ("BRK-B", "BRK.B"),
+    ("AVGO", "AVGO"),
+    ("JPM", "JPM"),
+    ("V", "V"),
+    ("UNH", "UNH"),
+    ("XOM", "XOM"),
+    ("JNJ", "JNJ"),
+    ("WMT", "WMT"),
+    ("MA", "MA"),
+    ("PG", "PG"),
+    ("HD", "HD"),
+    ("CVX", "CVX"),
+    ("MRK", "MRK"),
+    ("ABBV", "ABBV"),
+    ("COST", "COST"),
+    ("PEP", "PEP"),
+    ("KO", "KO"),
+    ("NFLX", "NFLX"),
+    ("AMD", "AMD"),
+    ("ORCL", "ORCL"),
+    ("CRM", "CRM"),
+    ("BAC", "BAC"),
+    ("DIS", "DIS"),
+)
+
+_YAHOO_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/122.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json",
 }
 
 
 @st.cache_data(ttl=60, show_spinner=False)
 def fetch_coin_ticker_prices() -> list[dict[str, Any]]:
-    """CoinGecko 무료 API · 실패 시 임시 데이터."""
-    ids = ",".join(_TICKER_ID_TO_SYM.keys())
-    url = (
-        "https://api.coingecko.com/api/v3/simple/price"
-        f"?ids={ids}&vs_currencies=usd&include_24hr_change=true"
-    )
+    """CoinGecko 시가총액 상위 코인(~20, 스테이블 제외) · 실패 시 임시 데이터."""
+    url = "https://api.coingecko.com/api/v3/coins/markets"
+    params = {
+        "vs_currency": "usd",
+        "order": "market_cap_desc",
+        "per_page": 40,
+        "page": 1,
+        "sparkline": "false",
+        "price_change_percentage": "24h",
+    }
     try:
-        resp = requests.get(url, timeout=6)
+        resp = requests.get(url, params=params, timeout=8)
         resp.raise_for_status()
-        data = resp.json()
+        rows = resp.json()
         out: list[dict[str, Any]] = []
-        for cid, sym in _TICKER_ID_TO_SYM.items():
-            row = data.get(cid) or {}
-            if "usd" not in row:
+        for row in rows:
+            if not isinstance(row, dict):
                 continue
+            cid = str(row.get("id") or "")
+            if cid in _COIN_STABLE_IDS:
+                continue
+            sym = str(row.get("symbol") or "").upper()
+            price = row.get("current_price")
+            if not sym or price is None:
+                continue
+            chg = row.get("price_change_percentage_24h")
+            if chg is None:
+                chg = row.get("price_change_percentage_24h_in_currency")
             out.append(
                 {
-                    "id": cid,
                     "symbol": sym,
-                    "usd": float(row["usd"]),
-                    "usd_24h_change": float(row.get("usd_24h_change") or 0.0),
+                    "price": float(price),
+                    "change_pct": float(chg or 0.0),
+                    "currency": "USD",
                 }
             )
-        return out or list(_TICKER_MOCK)
+            if len(out) >= 20:
+                break
+        return out or list(_COIN_TICKER_MOCK)
     except Exception:
-        return list(_TICKER_MOCK)
+        return list(_COIN_TICKER_MOCK)
 
 
-def _format_ticker_price(usd: float) -> str:
-    if usd >= 1000:
-        return f"${usd:,.0f}"
-    if usd >= 1:
-        return f"${usd:,.2f}"
-    return f"${usd:.4f}"
+def _yahoo_chart_quote(symbol: str) -> dict[str, Any] | None:
+    """Yahoo chart meta에서 현재가·전일대비 추출."""
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+    try:
+        resp = requests.get(
+            url,
+            params={"interval": "1d", "range": "5d"},
+            headers=_YAHOO_HEADERS,
+            timeout=8,
+        )
+        resp.raise_for_status()
+        result = (resp.json().get("chart") or {}).get("result") or []
+        if not result:
+            return None
+        meta = result[0].get("meta") or {}
+        price = meta.get("regularMarketPrice")
+        if price is None:
+            return None
+        prev = meta.get("chartPreviousClose") or meta.get("previousClose")
+        change_pct = 0.0
+        if prev not in (None, 0, 0.0):
+            change_pct = (float(price) - float(prev)) / float(prev) * 100.0
+        return {
+            "symbol": str(meta.get("symbol") or symbol),
+            "price": float(price),
+            "change_pct": float(change_pct),
+            "currency": str(meta.get("currency") or "USD"),
+        }
+    except Exception:
+        return None
 
 
-def _render_coin_price_ticker() -> None:
-    """홈 최상단 코인 가격 마퀴(좌→우 흐르는) 티커."""
-    items = fetch_coin_ticker_prices()
+@st.cache_data(ttl=90, show_spinner=False)
+def fetch_stock_ticker_prices() -> list[dict[str, Any]]:
+    """코스피 대표 20 + 미국 대표 30 · Yahoo chart 병렬 조회."""
+    universe = list(_STOCK_TICKER_KR) + list(_STOCK_TICKER_US)
+    label_map = {sym: label for sym, label in universe}
+    quotes: dict[str, dict[str, Any]] = {}
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        futures = {
+            pool.submit(_yahoo_chart_quote, sym): sym for sym, _ in universe
+        }
+        for fut in as_completed(futures):
+            sym = futures[fut]
+            try:
+                q = fut.result()
+            except Exception:
+                q = None
+            if q:
+                quotes[sym] = q
+    out: list[dict[str, Any]] = []
+    for sym, label in universe:
+        q = quotes.get(sym)
+        if not q:
+            continue
+        out.append(
+            {
+                "symbol": label,
+                "yahoo": sym,
+                "price": q["price"],
+                "change_pct": q["change_pct"],
+                "currency": q["currency"],
+            }
+        )
+    return out
+
+
+def _format_market_price(price: float, currency: str = "USD") -> str:
+    cur = (currency or "USD").upper()
+    if cur == "KRW":
+        return f"₩{price:,.0f}"
+    if price >= 1000:
+        return f"${price:,.0f}"
+    if price >= 1:
+        return f"${price:,.2f}"
+    return f"${price:.4f}"
+
+
+def _render_market_price_ticker(category: Category) -> None:
+    """언론사 티커 아래 · 코인/주식 시세 마퀴."""
+    if category == "crypto":
+        items = fetch_coin_ticker_prices()
+        rail_cls = "is-crypto"
+        label = "Quotes"
+        aria = "주요 코인 시세"
+    else:
+        items = fetch_stock_ticker_prices()
+        rail_cls = "is-stocks"
+        label = "Quotes"
+        aria = "주요 주식 시세"
+    if not items:
+        return
     chips: list[str] = []
     for it in items:
-        chg = float(it.get("usd_24h_change") or 0.0)
+        chg = float(it.get("change_pct") or 0.0)
         cls = "up" if chg >= 0 else "down"
         sign = "+" if chg >= 0 else ""
+        price_txt = _format_market_price(
+            float(it["price"]),
+            str(it.get("currency") or "USD"),
+        )
         chips.append(
-            f'<span class="rd-ticker-item">'
+            f'<span class="rd-ticker-item rd-price-item">'
             f'<span class="sym">{html.escape(str(it["symbol"]))}</span>'
-            f'{html.escape(_format_ticker_price(float(it["usd"])))} '
+            f"{html.escape(price_txt)} "
             f'<span class="{cls}">{sign}{chg:.2f}%</span>'
             f"</span>"
         )
-    # 끊김 없이 루프되도록 두 번 이어붙임
     track = "".join(chips + chips)
     st.markdown(
-        f'<div class="rd-ticker-wrap" aria-label="주요 코인 가격">'
-        f'<div class="rd-ticker-track">{track}</div></div>',
+        f'<div class="rd-press-rail rd-price-rail {rail_cls}" aria-label="{aria}">'
+        f'<div class="rd-press-rail-label">{label}</div>'
+        f'<div class="rd-press-rail-viewport">'
+        f'<div class="rd-press-rail-track rd-price-track">{track}</div>'
+        f"</div></div>",
         unsafe_allow_html=True,
     )
+
+
+# 하위 호환
+def _format_ticker_price(usd: float) -> str:
+    return _format_market_price(usd, "USD")
+
+
+def _render_coin_price_ticker() -> None:
+    _render_market_price_ticker("crypto")
 
 
 def _active_press_sources(
@@ -4066,10 +4283,10 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     settings["ui_theme"] = theme
     st.caption(f"보기 모드 · 현재 {'라이트' if theme == '라이트' else '다크'} (상단 토글)")
     settings["show_ticker"] = st.toggle(
-        "가격 티커 표시",
-        value=bool(settings.get("show_ticker", False)),
+        "시세 티커 표시",
+        value=bool(settings.get("show_ticker", True)),
         key="show_ticker_toggle",
-        help="끄면 첫 화면이 피드에만 집중됩니다 (권장)",
+        help="코인/주식 탭 아래 현재 시세 마퀴를 켭니다",
     )
 
     if SHOW_APP_TRANSLATION_UI:
@@ -4638,8 +4855,6 @@ def main() -> None:
         mode, settings = render_sidebar()
 
     settings = render_title_with_hamburger(settings)
-    if bool(settings.get("show_ticker", False)):
-        _render_coin_price_ticker()
     query_crypto = _resolve_panel_query("crypto")
     query_stocks = _resolve_panel_query("stocks")
 
@@ -4741,8 +4956,10 @@ def main() -> None:
         active_rows = crypto_rows
         active_sources = active_crypto
 
-    # 선택 탭에 맞는 언론사만 듀얼 채널 티커로 표시
+    # 선택 탭에 맞는 언론사 · 시세 티커
     _render_press_sources_ticker(enabled, media_region, active_cat)
+    if bool(settings.get("show_ticker", True)):
+        _render_market_price_ticker(active_cat)
 
     render_feed_panel_head(
         title=_category_label(active_cat),
