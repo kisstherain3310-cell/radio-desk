@@ -62,6 +62,7 @@ THEME_OPTIONS = ("다크", "라이트")
 
 # 브랜드 로고 — 테마별 후보
 BRAND_LOGO_CANDIDATES_DARK = (
+    "logo_file/radio-desk-logo-header-dark.png",
     "logo_file/radio-desk-logo-transparent-on-dark.png",
     "radio-desk-logo-transparent.png",
     "logo_file/radio-desk-on-dark.png",
@@ -72,6 +73,7 @@ BRAND_LOGO_CANDIDATES_DARK = (
     "logo.png",
 )
 BRAND_LOGO_CANDIDATES_LIGHT = (
+    "logo_file/radio-desk-logo-header-light.png",
     "radio-desk-logo-transparent.png",
     "logo_file/radio-desk-primary-lockup.png",
     "logo_file/radio-desk-stacked-lockup.png",
@@ -110,21 +112,62 @@ def _resolve_brand_logo_path(theme: str | None = None) -> Path | None:
     return None
 
 
+def _prepare_brand_logo_png(path: Path) -> bytes:
+    """여백 크롭·샤픈·레티나용 높이로 다듬어 헤더에서 더 크고 선명하게."""
+    from io import BytesIO
+
+    from PIL import Image, ImageFilter
+
+    im = Image.open(path).convert("RGBA")
+    bbox = im.getbbox()
+    if bbox:
+        x0, y0, x1, y1 = bbox
+        pad = 6
+        im = im.crop(
+            (
+                max(0, x0 - pad),
+                max(0, y0 - pad),
+                min(im.width, x1 + pad),
+                min(im.height, y1 + pad),
+            )
+        )
+    # 이미 헤더용으로 다듬은 파일이면 추가 축소만 피하고 샤픈은 가볍게
+    already_header = "logo-header" in path.name
+    if not already_header:
+        im = im.filter(ImageFilter.UnsharpMask(radius=1.6, percent=145, threshold=1))
+    # CSS ~76px × 3x DPR 대비
+    min_h = 280 if not already_header else 240
+    if im.height < min_h:
+        scale = min_h / im.height
+        im = im.resize(
+            (max(1, round(im.width * scale)), min_h),
+            Image.Resampling.LANCZOS,
+        )
+        im = im.filter(ImageFilter.UnsharpMask(radius=0.9, percent=90, threshold=1))
+    buf = BytesIO()
+    im.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
 @lru_cache(maxsize=4)
 def _brand_logo_data_uri(theme: str = "라이트") -> str:
     """로고 PNG → data URI (크롬 자동번역이 텍스트 로고를 깨뜨리는 것 방지)."""
     path = _resolve_brand_logo_path(theme)
     if path is None:
         return ""
-    raw = path.read_bytes()
-    suffix = path.suffix.lower()
-    mime = {
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".webp": "image/webp",
-        ".gif": "image/gif",
-    }.get(suffix, "image/png")
+    try:
+        raw = _prepare_brand_logo_png(path)
+        mime = "image/png"
+    except Exception:
+        raw = path.read_bytes()
+        suffix = path.suffix.lower()
+        mime = {
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".webp": "image/webp",
+            ".gif": "image/gif",
+        }.get(suffix, "image/png")
     return f"data:{mime};base64," + base64.b64encode(raw).decode("ascii")
 
 # region: overseas = 해외 매체, domestic = 국내 매체
@@ -613,11 +656,16 @@ a.rd-brand-home:hover {
 }
 a.rd-brand-home img.rd-brand-logo,
 img.rd-brand-logo {
-  height: 48px;
+  height: 76px;
   width: auto;
-  max-width: 280px;
+  max-width: min(460px, 100%);
   display: block;
   object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: high-quality;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 .rd-brand-sub {
   font-size: 0.78rem;
@@ -885,6 +933,40 @@ div[data-testid="stElementContainer"]:has(iframe[height="1"]) {
 }
 .rd-ticker-item .up { color: #7ec8a8; }
 .rd-ticker-item .down { color: #e07a7a; }
+
+/* 취합 언론사 티커 */
+.rd-press-ticker.rd-ticker-wrap {
+  margin: 0.15rem 0 0.55rem 0;
+  border-color: var(--line);
+  background: rgba(110, 159, 255, 0.05);
+}
+.rd-press-ticker .rd-ticker-track {
+  gap: 0;
+  animation-duration: 55s;
+  padding: 0.38rem 0;
+}
+.rd-press-ticker .rd-ticker-item {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.76rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-soft);
+  padding: 0 0.85rem;
+  border-right: 1px solid var(--line);
+}
+.rd-press-ticker .rd-ticker-item:last-child {
+  border-right: none;
+}
+.rd-press-ticker .rd-ticker-item .press-tag {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-right: 0.35rem;
+}
+html[data-rd-theme="light"] .rd-press-ticker.rd-ticker-wrap {
+  background: rgba(20, 40, 80, 0.03);
+}
 @keyframes rd-ticker-marquee {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
@@ -1176,8 +1258,8 @@ section.stMain div.stButton > button[data-testid="baseButton-secondary"]:hover {
   }
   a.rd-brand-home img.rd-brand-logo,
   img.rd-brand-logo {
-    height: 38px;
-    max-width: 200px;
+    height: 58px;
+    max-width: min(320px, 92vw);
   }
   .rd-brand-sub { font-size: 0.7rem; }
   .rd-brand-hint { font-size: 0.72rem; margin-bottom: 0.4rem; }
@@ -1408,7 +1490,8 @@ def _default_settings() -> dict[str, Any]:
         "alert_on_watchlist": True,
         "alert_on_source": True,
         "result_limit": 40,
-        # 패널별 정렬 (기본 HOT순). CRYPTO / STOCKS 독립
+        # 목록 정렬 (기본 HOT순). 코인·주식 탭 공통
+        "sort_hot_first": True,
         "sort_hot_first_crypto": True,
         "sort_hot_first_stocks": True,
         "hot_sensitivity": "공격적",
@@ -1458,11 +1541,21 @@ def _ensure_source_keys(settings: dict[str, Any]) -> dict[str, Any]:
     for src in ALL_SOURCES:
         enabled.setdefault(src, True)
         alert.setdefault(src, False)
-    # 레거시 공통 sort_hot_first → 패널별 키로 이전
-    if "sort_hot_first_crypto" not in settings or "sort_hot_first_stocks" not in settings:
-        legacy = bool(settings.get("sort_hot_first", True))
-        settings.setdefault("sort_hot_first_crypto", legacy)
-        settings.setdefault("sort_hot_first_stocks", legacy)
+    # 정렬: 코인·주식 공통 (구버전 패널별 키가 있으면 병합)
+    if "sort_hot_first" not in settings:
+        c = settings.get("sort_hot_first_crypto")
+        s = settings.get("sort_hot_first_stocks")
+        if c is False or s is False:
+            settings["sort_hot_first"] = False
+        elif c is not None:
+            settings["sort_hot_first"] = bool(c)
+        elif s is not None:
+            settings["sort_hot_first"] = bool(s)
+        else:
+            settings["sort_hot_first"] = True
+    settings["sort_hot_first"] = bool(settings["sort_hot_first"])
+    settings["sort_hot_first_crypto"] = settings["sort_hot_first"]
+    settings["sort_hot_first_stocks"] = settings["sort_hot_first"]
     sens = settings.get("hot_sensitivity", "공격적")
     if sens not in HOT_SENSITIVITY_OPTIONS:
         settings["hot_sensitivity"] = "공격적"
@@ -2705,6 +2798,52 @@ def _render_coin_price_ticker() -> None:
     )
 
 
+def _active_press_sources(
+    enabled: dict[str, Any],
+    media_region: str,
+) -> list[tuple[str, str]]:
+    """표시 중인 취합 언론사 (카테고리 태그, 이름)."""
+    out: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for cat, feeds in (("코인", CRYPTO_FEEDS), ("주식", STOCK_FEEDS)):
+        for f in feeds:
+            src = str(f["source"])
+            if src in seen:
+                continue
+            if not enabled.get(src, True):
+                continue
+            if not _source_matches_media_region(src, media_region):
+                continue
+            seen.add(src)
+            out.append((cat, src))
+    return out
+
+
+def _render_press_sources_ticker(
+    enabled: dict[str, Any],
+    media_region: str,
+) -> None:
+    """취합 언론사 이름을 흐르는 티커로 표시."""
+    sources = _active_press_sources(enabled, media_region)
+    if not sources:
+        return
+    chips: list[str] = []
+    for tag, name in sources:
+        chips.append(
+            f'<span class="rd-ticker-item">'
+            f'<span class="press-tag">{html.escape(tag)}</span>'
+            f"{html.escape(name)}"
+            f"</span>"
+        )
+    track = "".join(chips + chips)
+    st.markdown(
+        f'<div class="rd-ticker-wrap rd-press-ticker" '
+        f'aria-label="취합 언론사">'
+        f'<div class="rd-ticker-track">{track}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+
 def _inject_ga4() -> None:
     """GA4 측정 ID가 Secrets/환경에 있으면 gtag 삽입."""
     mid = _load_config_str("GA_MEASUREMENT_ID")
@@ -3223,8 +3362,87 @@ def _feed_sort_label(sort_hot_first: bool) -> str:
     return "HOT순" if sort_hot_first else "최신순"
 
 
-def _sort_settings_key(panel: str) -> str:
-    return "sort_hot_first_crypto" if panel == "crypto" else "sort_hot_first_stocks"
+def _sync_sort_settings(settings: dict[str, Any], sort_hot_first: bool) -> None:
+    """코인·주식 공통 정렬값을 settings에 맞춘다."""
+    settings["sort_hot_first"] = bool(sort_hot_first)
+    settings["sort_hot_first_crypto"] = bool(sort_hot_first)
+    settings["sort_hot_first_stocks"] = bool(sort_hot_first)
+    st.session_state.settings = settings
+
+
+def _resolve_feed_sort(settings: dict[str, Any]) -> bool:
+    """
+    공통 정렬 라디오(이전 런 값)를 settings에 반영.
+    prepare_rows 보다 먼저 호출해야 정렬이 바로 적용된다.
+    코인·주식 탭이 같은 값을 쓴다.
+    """
+    widget_key = "feed_sort"
+    label = st.session_state.get(widget_key)
+    # 탭 전환으로 위젯이 잠깐 없어져도, 패널별 구키에서 복구
+    if label not in ("최신순", "HOT순"):
+        for legacy_key in ("feed_sort_crypto", "feed_sort_stocks"):
+            legacy = st.session_state.get(legacy_key)
+            if legacy in ("최신순", "HOT순"):
+                label = legacy
+                break
+    if label not in ("최신순", "HOT순"):
+        label = _feed_sort_label(bool(settings.get("sort_hot_first", True)))
+    st.session_state[widget_key] = label
+    _sync_sort_settings(settings, label == "HOT순")
+    return bool(settings["sort_hot_first"])
+
+
+def _on_feed_sort_change() -> None:
+    label = st.session_state.get("feed_sort")
+    if label not in ("최신순", "HOT순"):
+        return
+    settings = st.session_state.get("settings")
+    if isinstance(settings, dict):
+        _sync_sort_settings(settings, label == "HOT순")
+
+
+def _resolve_panel_query(panel: str) -> str:
+    """패널별 키워드 필터 (CRYPTO / STOCKS 독립)."""
+    key = f"feed_filter_{panel}"
+    q = st.session_state.get(key)
+    if q is None:
+        q = ""
+    return str(q)
+
+
+def _render_feed_toolbar(settings: dict[str, Any], *, panel: str) -> None:
+    """정렬(공통) · 키워드 필터(패널별)."""
+    options = ["최신순", "HOT순"]
+    desired = _feed_sort_label(bool(settings.get("sort_hot_first", True)))
+    sort_key = "feed_sort"
+    filter_key = f"feed_filter_{panel}"
+    if sort_key not in st.session_state:
+        st.session_state[sort_key] = desired
+    elif st.session_state[sort_key] not in options:
+        st.session_state[sort_key] = desired
+    if filter_key not in st.session_state:
+        st.session_state[filter_key] = ""
+
+    placeholder = (
+        "키워드 · btc, eth…" if panel == "crypto" else "키워드 · nvidia, fed…"
+    )
+    c_sort, c_filter = st.columns([1.55, 1], gap="small")
+    with c_sort:
+        st.radio(
+            "정렬",
+            options,
+            horizontal=True,
+            key=sort_key,
+            label_visibility="collapsed",
+            on_change=_on_feed_sort_change,
+        )
+    with c_filter:
+        st.text_input(
+            "키워드 필터",
+            placeholder=placeholder,
+            key=filter_key,
+            label_visibility="collapsed",
+        )
 
 
 def _resolve_hot_sensitivity(settings: dict[str, Any]) -> str:
@@ -3320,77 +3538,6 @@ def _render_sidebar_status() -> None:
         st.caption("RSS 수집 전 · 잠시만 기다려 주세요.")
     product = _status_product_label()
     st.caption(product)
-
-
-def _resolve_panel_sort(settings: dict[str, Any], panel: str) -> bool:
-    """
-    해당 패널 정렬 라디오(이전 런 값)를 settings에 반영.
-    prepare_rows 보다 먼저 호출해야 정렬이 바로 적용된다.
-    CRYPTO / STOCKS 는 서로 독립.
-    """
-    sk = _sort_settings_key(panel)
-    widget_key = f"feed_sort_{panel}"
-    label = st.session_state.get(widget_key)
-    if label not in ("최신순", "HOT순"):
-        label = _feed_sort_label(bool(settings.get(sk, True)))
-        st.session_state[widget_key] = label
-    settings[sk] = label == "HOT순"
-    st.session_state.settings = settings
-    return bool(settings[sk])
-
-
-def _on_feed_sort_change(panel: str) -> None:
-    key = f"feed_sort_{panel}"
-    label = st.session_state.get(key)
-    if label not in ("최신순", "HOT순"):
-        return
-    settings = st.session_state.get("settings")
-    if isinstance(settings, dict):
-        settings[_sort_settings_key(panel)] = label == "HOT순"
-        st.session_state.settings = settings
-
-
-def _resolve_panel_query(panel: str) -> str:
-    """패널별 키워드 필터 (CRYPTO / STOCKS 독립)."""
-    key = f"feed_filter_{panel}"
-    q = st.session_state.get(key)
-    if q is None:
-        q = ""
-    return str(q)
-
-
-def _render_feed_toolbar(settings: dict[str, Any], *, panel: str) -> None:
-    """CRYPTO/STOCKS 제목 아래 · 정렬·키워드 필터 (패널별 독립)."""
-    options = ["최신순", "HOT순"]
-    desired = _feed_sort_label(bool(settings.get(_sort_settings_key(panel), True)))
-    sort_key = f"feed_sort_{panel}"
-    filter_key = f"feed_filter_{panel}"
-    if sort_key not in st.session_state:
-        st.session_state[sort_key] = desired
-    if filter_key not in st.session_state:
-        st.session_state[filter_key] = ""
-
-    placeholder = (
-        "키워드 · btc, eth…" if panel == "crypto" else "키워드 · nvidia, fed…"
-    )
-    c_sort, c_filter = st.columns([1.55, 1], gap="small")
-    with c_sort:
-        st.radio(
-            "정렬",
-            options,
-            horizontal=True,
-            key=sort_key,
-            label_visibility="collapsed",
-            on_change=_on_feed_sort_change,
-            args=(panel,),
-        )
-    with c_filter:
-        st.text_input(
-            "키워드 필터",
-            placeholder=placeholder,
-            key=filter_key,
-            label_visibility="collapsed",
-        )
 
 
 def render_feed_panel_head(
@@ -3930,8 +4077,7 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
         key="use_signal_keywords",
     )
     st.caption(
-        "목록 정렬(최신순·HOT순)은 코인 / 주식 각각 제목 아래에서 "
-        "따로 바꿀 수 있습니다."
+        "목록 정렬(최신순·HOT순)은 코인·주식 탭에 공통으로 적용됩니다."
     )
 
     # 4) 소스
@@ -4185,7 +4331,8 @@ def _render_brand_header() -> None:
         if logo_uri:
             brand_inner = (
                 f'<img class="rd-brand-logo" src="{logo_uri}" '
-                f'alt="라디오 데스크" />'
+                f'alt="라디오 데스크" decoding="async" '
+                f'draggable="false" />'
             )
         else:
             brand_inner = "라디오 데스크"
@@ -4418,8 +4565,7 @@ def main() -> None:
     enable_translation = bool(settings.get("enable_translation", False))
     translate_limit = int(settings.get("translate_limit", 6))
     translate_only_hot_new = bool(settings.get("translate_only_hot_new", True))
-    sort_crypto = _resolve_panel_sort(settings, "crypto")
-    sort_stocks = _resolve_panel_sort(settings, "stocks")
+    sort_hot_first = _resolve_feed_sort(settings)
     hot_sensitivity = _resolve_hot_sensitivity(settings)
     media_region = _resolve_media_region(settings)
 
@@ -4438,7 +4584,7 @@ def main() -> None:
         use_signal_keywords=settings.get("use_signal_keywords", True),
         hot_sensitivity=hot_sensitivity,
         media_region=media_region,
-        sort_hot_first=sort_crypto,
+        sort_hot_first=sort_hot_first,
         fetched_at=fetched_at,
         enable_translation=enable_translation,
         translate_limit=translate_limit,
@@ -4454,28 +4600,15 @@ def main() -> None:
         use_signal_keywords=settings.get("use_signal_keywords", True),
         hot_sensitivity=hot_sensitivity,
         media_region=media_region,
-        sort_hot_first=sort_stocks,
+        sort_hot_first=sort_hot_first,
         fetched_at=fetched_at,
         enable_translation=enable_translation,
         translate_limit=translate_limit,
         translate_only_hot_new=translate_only_hot_new,
     )
 
-    status_text, status_warn = _translation_status_lines(
-        enable_translation,
-        translate_limit,
-        translate_only_hot_new,
-    )
-    rss_line = _rss_status_line(rss_health, is_stale)
-    fail_n = len(rss_health.get("crypto_fail") or []) + len(
-        rss_health.get("stocks_fail") or []
-    )
-    banner_warn = status_warn or is_stale or fail_n > 0 or bool(rss_health.get("error"))
     st.session_state["last_rss_is_stale"] = bool(is_stale)
-
-    # 문제 있을 때만 본문에 짧은 경고 (평소에는 사이드바 상태만)
-    if banner_warn:
-        st.warning(f"{status_text} · {rss_line}")
+    st.session_state["last_rss_health"] = rss_health
 
     _update_seen_and_alerts(crypto_rows + stock_rows, settings)
 
@@ -4489,6 +4622,9 @@ def main() -> None:
         for s in (f["source"] for f in STOCK_FEEDS)
         if enabled.get(s, True) and _source_matches_media_region(s, media_region)
     ]
+
+    # 취합 언론사 티커 (본문 RSS 요약 배너 대신)
+    _render_press_sources_ticker(enabled, media_region)
 
     # 코인 | 주식 탭 (한 카테고리만 전체 폭)
     tab_key = "home_category_tab"
@@ -4507,12 +4643,10 @@ def main() -> None:
         active_cat: Category = "stocks"
         active_rows = stock_rows
         active_sources = active_stocks
-        active_sort = sort_stocks
     else:
         active_cat = "crypto"
         active_rows = crypto_rows
         active_sources = active_crypto
-        active_sort = sort_crypto
 
     render_feed_panel_head(
         title=_category_label(active_cat),
@@ -4523,7 +4657,7 @@ def main() -> None:
         rows=active_rows,
         mode=mode,
         watchlist=watchlist,
-        sort_hot_first=active_sort,
+        sort_hot_first=sort_hot_first,
         hot_sensitivity=hot_sensitivity,
         media_region=media_region,
         category=active_cat,
