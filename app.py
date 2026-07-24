@@ -1173,11 +1173,17 @@ html[data-rd-theme="light"] .rd-press-rail.is-stocks {
 }
 
 mark.hl {
-  background: transparent;
-  color: #c9d4ef;
-  font-weight: inherit;
-  padding: 0;
-  border-radius: 0;
+  background: rgba(126, 200, 168, 0.18);
+  color: var(--crypto);
+  font-weight: 700;
+  padding: 0.05em 0.18em;
+  border-radius: 3px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+html[data-rd-theme="light"] mark.hl {
+  background: rgba(31, 138, 100, 0.14);
+  color: #0f7a58;
 }
 
 .status-banner {
