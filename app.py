@@ -1217,7 +1217,7 @@ html[data-rd-theme="light"] .rd-press-rail.is-stocks {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.45rem 0.75rem;
+  gap: 0.55rem 0.85rem;
   margin: 0.05rem 0 0.65rem 0;
   padding: 0.55rem 0.75rem;
   border-radius: 6px;
@@ -1234,6 +1234,25 @@ html[data-rd-theme="light"] .rd-press-rail.is-stocks {
 }
 .rd-sentiment.is-neutral {
   border-color: var(--line);
+}
+.rd-sentiment-gauge-wrap {
+  flex: 0 0 auto;
+  width: 132px;
+  line-height: 0;
+}
+.rd-sentiment-gauge-wrap svg {
+  width: 132px;
+  height: 78px;
+  display: block;
+  overflow: visible;
+}
+.rd-sentiment-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.65rem;
+  flex: 1 1 14rem;
+  min-width: 0;
 }
 .rd-sentiment-label {
   font-family: 'IBM Plex Mono', monospace;
@@ -1255,12 +1274,13 @@ html[data-rd-theme="light"] .rd-press-rail.is-stocks {
   color: var(--text-soft);
 }
 .rd-sentiment-hint {
-  flex: 1 1 12rem;
+  flex: 1 1 100%;
   font-size: 0.72rem;
   color: var(--muted);
   line-height: 1.35;
 }
 .rd-sentiment-note {
+  flex: 1 1 100%;
   font-size: 0.66rem;
   color: var(--faint);
 }
@@ -3520,6 +3540,93 @@ def _sentiment_tone(band: str) -> str:
     return "neutral"
 
 
+def _vix_to_gauge_score(vix: float) -> float:
+    """VIX를 0(공포)~100(탐욕) 게이지 위치로 역매핑."""
+    v = max(10.0, min(40.0, float(vix)))
+    return 100.0 * (40.0 - v) / 30.0
+
+
+def _sentiment_gauge_svg(score: float, *, needle_color: str = "#e8b84a") -> str:
+    """
+    반원 계기판 + 바늘.
+    score 0 = 왼쪽(공포), 100 = 오른쪽(탐욕).
+    """
+    import math
+
+    s = max(0.0, min(100.0, float(score)))
+    cx, cy, r = 100.0, 92.0, 72.0
+
+    def polar(pct: float, radius: float = r) -> tuple[float, float]:
+        # 0% → 180°, 100% → 0° (위쪽 반원)
+        deg = 180.0 - (pct / 100.0) * 180.0
+        rad = math.radians(deg)
+        return cx + radius * math.cos(rad), cy - radius * math.sin(rad)
+
+    def arc_path(p0: float, p1: float, radius: float = r) -> str:
+        x0, y0 = polar(p0, radius)
+        x1, y1 = polar(p1, radius)
+        large = 1 if (p1 - p0) > 50 else 0
+        return (
+            f"M {x0:.2f} {y0:.2f} "
+            f"A {radius:.2f} {radius:.2f} 0 {large} 1 {x1:.2f} {y1:.2f}"
+        )
+
+    # 구간 색: 극단적 공포 → 극단적 탐욕
+    bands = (
+        (0, 24, "#c45c5c"),
+        (24, 44, "#d4894a"),
+        (44, 56, "#c4b45a"),
+        (56, 75, "#6faf7a"),
+        (75, 100, "#3d9a6a"),
+    )
+    arcs = []
+    for a, b, color in bands:
+        arcs.append(
+            f'<path d="{arc_path(a, b)}" fill="none" stroke="{color}" '
+            f'stroke-width="12" stroke-linecap="butt" opacity="0.92"/>'
+        )
+
+    # 눈금
+    ticks = []
+    for pct in (0, 25, 50, 75, 100):
+        x1, y1 = polar(pct, r - 2)
+        x2, y2 = polar(pct, r - 10)
+        ticks.append(
+            f'<line x1="{x1:.2f}" y1="{y1:.2f}" x2="{x2:.2f}" y2="{y2:.2f}" '
+            f'stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>'
+        )
+
+    nx, ny = polar(s, r - 18)
+    # 바늘 받침 삼각형 느낌: 중심 → 끝
+    bx1, by1 = polar(max(0, s - 1.8), 8)
+    bx2, by2 = polar(min(100, s + 1.8), 8)
+    needle = (
+        f'<polygon points="{nx:.2f},{ny:.2f} {bx1:.2f},{by1:.2f} {bx2:.2f},{by2:.2f}" '
+        f'fill="{needle_color}" stroke="#1a1f28" stroke-width="0.6"/>'
+        f'<circle cx="{cx}" cy="{cy}" r="5.5" fill="{needle_color}" '
+        f'stroke="#1a1f28" stroke-width="1.2"/>'
+        f'<circle cx="{cx}" cy="{cy}" r="2.2" fill="#1a1f28"/>'
+    )
+
+    fear_lbl = html.escape(t("fear"))
+    greed_lbl = html.escape(t("greed"))
+    return (
+        f'<svg viewBox="0 0 200 110" xmlns="http://www.w3.org/2000/svg" '
+        f'aria-hidden="true">'
+        f'<path d="{arc_path(0, 100, r + 1)}" fill="none" '
+        f'stroke="rgba(255,255,255,0.08)" stroke-width="16"/>'
+        f'{"".join(arcs)}'
+        f'{"".join(ticks)}'
+        f"{needle}"
+        f'<text x="22" y="108" fill="currentColor" font-size="9" '
+        f'font-family="IBM Plex Mono, monospace" opacity="0.55">{fear_lbl}</text>'
+        f'<text x="178" y="108" fill="currentColor" font-size="9" '
+        f'text-anchor="end" font-family="IBM Plex Mono, monospace" '
+        f'opacity="0.55">{greed_lbl}</text>'
+        f"</svg>"
+    )
+
+
 def _render_market_sentiment(category: Category) -> None:
     """코인: Fear & Greed · 주식: VIX. 매수/매도 '신호'가 아닌 심리 참고."""
     if category == "crypto":
@@ -3527,6 +3634,7 @@ def _render_market_sentiment(category: Category) -> None:
         if not data:
             return
         score = int(data["score"])
+        gauge_score = float(score)
         band = _fng_band(score)
         tone = _sentiment_tone(band)
         label = t("sentiment_crypto")
@@ -3538,11 +3646,13 @@ def _render_market_sentiment(category: Category) -> None:
             hint = t("sentiment_hint_greed")
         else:
             hint = t("sentiment_hint_neutral")
+        needle = "#e8b84a"
     else:
         data = fetch_vix_level()
         if not data:
             return
         vix = float(data["score"])
+        gauge_score = _vix_to_gauge_score(vix)
         band = _vix_band(vix)
         tone = _sentiment_tone(band)
         label = t("sentiment_stocks")
@@ -3554,15 +3664,19 @@ def _render_market_sentiment(category: Category) -> None:
             hint = t("sentiment_hint_vix_low")
         else:
             hint = t("sentiment_hint_neutral")
+        needle = "#9aa8d8"
 
+    gauge = _sentiment_gauge_svg(gauge_score, needle_color=needle)
     st.markdown(
         f'<div class="rd-sentiment is-{tone}" role="status">'
+        f'<div class="rd-sentiment-gauge-wrap">{gauge}</div>'
+        f'<div class="rd-sentiment-copy">'
         f'<span class="rd-sentiment-label">{html.escape(label)}</span>'
         f'<span class="rd-sentiment-score">{html.escape(score_txt)}</span>'
         f'<span class="rd-sentiment-class">{html.escape(class_txt)}</span>'
         f'<span class="rd-sentiment-hint">{html.escape(hint)}</span>'
         f'<span class="rd-sentiment-note">{html.escape(t("sentiment_disclaimer"))}</span>'
-        f"</div>",
+        f"</div></div>",
         unsafe_allow_html=True,
     )
 
