@@ -515,8 +515,8 @@ section[data-testid="stSidebar"] .stTextArea textarea {
   background: #1a1f28 !important;
   color: var(--text) !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  border-radius: 8px !important;
-  font-size: 0.86rem !important;
+  border-radius: 6px !important;
+  font-size: 0.8rem !important;
   font-family: 'Noto Sans KR', sans-serif !important;
   caret-color: var(--accent) !important;
 }
@@ -528,6 +528,25 @@ section[data-testid="stSidebar"] .stTextArea textarea {
   background: #1e2430 !important;
   border-color: var(--accent-border) !important;
   box-shadow: 0 0 0 1px rgba(110, 159, 255, 0.18) !important;
+}
+
+/* 피드 키워드 필터 — 한 줄 툴바용 컴팩트 */
+div[data-testid="stVerticalBlock"]:has(.feed-body-anchor) .stTextInput {
+  margin-bottom: 0.15rem !important;
+}
+div[data-testid="stVerticalBlock"]:has(.feed-body-anchor) .stTextInput input {
+  padding: 0.28rem 0.55rem !important;
+  min-height: 1.85rem !important;
+  height: 1.85rem !important;
+  line-height: 1.2 !important;
+  font-size: 0.78rem !important;
+}
+html[data-rd-theme="light"] [data-testid="stAppViewContainer"] .stTextInput input {
+  background: #f4f6f9 !important;
+  border-color: rgba(20, 28, 45, 0.14) !important;
+}
+html[data-rd-theme="light"] [data-testid="stAppViewContainer"] .stTextInput input:focus {
+  background: #fff !important;
 }
 
 section[data-testid="stSidebar"] div[data-testid="stCheckbox"] label p {
@@ -1551,7 +1570,7 @@ def _status_product_label() -> str:
             f"검증 매체 속보 무료 · Pro는 광고 제거 + 시그널 우선 "
             f"({billing.PRO_PRICE_LABEL})"
         )
-    return "검증 매체 속보 · 영어는 「원문 보기」 후 번역"
+    return "검증 매체 속보 · 영어는 원문에서 브라우저 번역"
 
 
 def _register_article(row: dict[str, Any], category: Category = "crypto") -> str:
@@ -1841,10 +1860,11 @@ def render_reader_page(article: dict[str, Any]) -> None:
         with cta1:
             if link:
                 st.link_button(
-                    "원문 보기",
+                    "원문 보기 · 브라우저 번역",
                     link,
                     use_container_width=True,
                     type="primary",
+                    help="원문 사이트에서 Chrome·Edge 주소창 번역을 켜 주세요.",
                 )
             else:
                 st.button("원문 없음", disabled=True, use_container_width=True)
@@ -1855,10 +1875,10 @@ def render_reader_page(article: dict[str, Any]) -> None:
 
         st.markdown(
             '<div class="reader-notice">'
-            "헤드라인 안내입니다. 전문은 원문에서 확인하세요. "
-            "영어는 「원문 보기」로 이동한 뒤, 그 사이트에서 번역해 주세요. "
-            "(이 터미널 화면을 통째로 번역하면 오류가 날 수 있습니다.) "
-            "좌·우 Ad는 광고 자리입니다."
+            "전문은 원문에서 확인하세요. "
+            "영어 기사는 「원문 보기 · 브라우저 번역」으로 이동한 뒤, "
+            "Chrome·Edge <b>주소창 오른쪽 번역</b>을 켜면 됩니다. "
+            "이 터미널(라디오 데스크) 화면을 통째로 번역하면 오류가 날 수 있습니다."
             "</div>",
             unsafe_allow_html=True,
         )
@@ -3351,11 +3371,10 @@ def _render_feed_toolbar(settings: dict[str, Any], *, panel: str) -> None:
         st.session_state[filter_key] = ""
 
     placeholder = (
-        "btc, eth, etf…" if panel == "crypto" else "nvidia, earnings, fed…"
+        "키워드 · btc, eth…" if panel == "crypto" else "키워드 · nvidia, fed…"
     )
-    c_sort, c_filter = st.columns([1.15, 1.85], gap="small")
+    c_sort, c_filter = st.columns([1.55, 1], gap="small")
     with c_sort:
-        st.caption("정렬")
         st.radio(
             "정렬",
             options,
@@ -3366,7 +3385,6 @@ def _render_feed_toolbar(settings: dict[str, Any], *, panel: str) -> None:
             args=(panel,),
         )
     with c_filter:
-        st.caption("키워드 필터")
         st.text_input(
             "키워드 필터",
             placeholder=placeholder,
@@ -3843,11 +3861,17 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     st.markdown("<div style='height:0.75rem'></div>", unsafe_allow_html=True)
     _render_sidebar_status()
 
-    # 브라우저 번역 안내 (앱 내 번역 토글 대체)
+    # 브라우저 번역 안내
     st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
     st.markdown('<div class="sidebar-label">영어 읽기</div>', unsafe_allow_html=True)
+    st.caption("해외 매체가 많아 영어 원문이 많습니다.")
     st.caption(
-        "헤드라인 → 「원문 보기」 → 뉴스 사이트에서 Chrome·Edge **번역**을 쓰세요."
+        "① 헤드라인 클릭 → ② 「원문 보기 · 브라우저 번역」 → "
+        "③ 뉴스 사이트에서 Chrome·Edge **주소창 번역**"
+    )
+    st.caption(
+        "라디오 데스크 화면 전체 번역은 오류가 날 수 있어, "
+        "원문 사이트에서 번역하는 방식을 권장합니다."
     )
 
     if SHOW_APP_TRANSLATION_UI:
@@ -4049,7 +4073,7 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
         st.success("저장됨 → data/user_settings.json")
 
     st.markdown(
-        '<div class="sidebar-hint">자동 새로고침 60초 · RSS 공개 피드</div>',
+        '<div class="sidebar-hint">자동 새로고침 30초 · RSS 공개 피드</div>',
         unsafe_allow_html=True,
     )
     if SHOW_APP_TRANSLATION_UI:
@@ -4168,7 +4192,10 @@ def _render_brand_header() -> None:
         st.markdown(
             f'<a class="rd-brand-home notranslate" href="?go_list=1" '
             f'title="목록으로" translate="no">{brand_inner}</a>'
-            '<div class="rd-brand-sub">Market News Terminal</div>',
+            '<div class="rd-brand-sub">Market News Terminal</div>'
+            '<div class="rd-brand-hint">'
+            "해외 원문 속보입니다. 영어면 주소창 오른쪽 <b>번역</b>을 켜 보세요."
+            "</div>",
             unsafe_allow_html=True,
         )
     with col_theme:
