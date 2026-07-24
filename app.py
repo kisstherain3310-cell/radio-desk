@@ -90,14 +90,16 @@ def _normalize_ui_theme(value: Any) -> str:
     if value in THEME_OPTIONS:
         return str(value)
     raw = str(value or "").strip().lower()
+    if raw in {"dark", "다크", "black"}:
+        return "다크"
     if raw in {"light", "라이트", "white"}:
         return "라이트"
-    return "다크"
+    return "라이트"
 
 
 def _resolve_brand_logo_path(theme: str | None = None) -> Path | None:
     root = Path(__file__).resolve().parent
-    theme = _normalize_ui_theme(theme or "다크")
+    theme = _normalize_ui_theme(theme or "라이트")
     candidates = (
         BRAND_LOGO_CANDIDATES_LIGHT if theme == "라이트" else BRAND_LOGO_CANDIDATES_DARK
     )
@@ -109,7 +111,7 @@ def _resolve_brand_logo_path(theme: str | None = None) -> Path | None:
 
 
 @lru_cache(maxsize=4)
-def _brand_logo_data_uri(theme: str = "다크") -> str:
+def _brand_logo_data_uri(theme: str = "라이트") -> str:
     """로고 PNG → data URI (크롬 자동번역이 텍스트 로고를 깨뜨리는 것 방지)."""
     path = _resolve_brand_logo_path(theme)
     if path is None:
@@ -707,9 +709,9 @@ img.rd-brand-logo {
 .news-item {
   background: var(--panel-card);
   border: 1px solid var(--line-soft);
-  border-radius: 8px;
-  padding: 0.62rem 0.75rem 0.68rem 0.75rem;
-  margin-bottom: 0.4rem;
+  border-radius: 6px;
+  padding: 0.48rem 0.65rem 0.52rem 0.65rem;
+  margin-bottom: 0.28rem;
   transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.2s ease;
 }
 
@@ -719,18 +721,20 @@ img.rd-brand-logo {
 }
 
 .news-item.is-new {
-  border-color: rgba(110, 159, 255, 0.35);
+  border-color: rgba(110, 159, 255, 0.45);
   box-shadow: inset 3px 0 0 var(--new);
-  background: rgba(110, 159, 255, 0.05);
-  animation: new-fade 2.4s ease-out 1;
+  background: rgba(110, 159, 255, 0.07);
+  animation: new-pulse 1.8s ease-out 2;
 }
 
 .news-item.is-hot {
   border-color: rgba(232, 184, 74, 0.28);
 }
 
-.news-item.is-new.is-hot {
-  box-shadow: inset 3px 0 0 var(--hot);
+.news-item.is-watch {
+  border-color: rgba(126, 200, 168, 0.55);
+  box-shadow: inset 3px 0 0 var(--crypto);
+  background: rgba(126, 200, 168, 0.08);
 }
 
 .news-item.is-breaking {
@@ -743,9 +747,9 @@ img.rd-brand-logo {
   border-color: rgba(220, 70, 70, 0.55);
 }
 
-@keyframes new-fade {
-  0% { background: rgba(110, 159, 255, 0.12); }
-  100% { background: rgba(110, 159, 255, 0.05); }
+@keyframes new-pulse {
+  0% { background: rgba(110, 159, 255, 0.18); }
+  100% { background: rgba(110, 159, 255, 0.07); }
 }
 
 .news-flags {
@@ -1172,7 +1176,20 @@ section.stMain div.stButton > button[data-testid="baseButton-secondary"]:hover {
     line-height: 1.45;
     white-space: normal;
   }
-  .news-item { padding: 0.65rem 0.15rem; }
+  .news-item { padding: 0.72rem 0.35rem; margin-bottom: 0.35rem; }
+  .headline-en, .headline-en a { font-size: 0.98rem !important; line-height: 1.4 !important; }
+
+  /* 모바일: 카테고리 라디오를 하단 고정처럼 크게 */
+  section.stMain div[data-testid="stRadio"]:has(+ *) ,
+  section.stMain div.rd-cat-tabs + div [role="radiogroup"] {
+    gap: 0.35rem !important;
+  }
+  section.stMain div.rd-cat-tabs + div label {
+    min-height: 2.4rem !important;
+    padding: 0.35rem 0.85rem !important;
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+  }
   .headline-en, .headline-en a { font-size: 0.92rem; }
   .reader-title { font-size: 1.15rem; }
   .ad-slot { min-height: 88px; margin-bottom: 0.55rem; }
@@ -1271,13 +1288,57 @@ section.stMain div.stButton > button[data-testid="baseButton-secondary"]:hover {
   }
 }
 
-/* 보기 모드(테마) 토글 */
-.rd-theme-toggle {
+/* 홈 카테고리 탭(코인|주식) */
+.rd-cat-tabs {
+  margin: 0.15rem 0 0.35rem 0;
+}
+
+/* 모바일 하단 카테고리 바 */
+.rd-mobile-cat-bar {
+  display: none;
+}
+
+.pill-watch {
+  background: rgba(126, 200, 168, 0.16);
+  color: var(--crypto);
+  border: 1px solid rgba(126, 200, 168, 0.4);
+  font-weight: 700;
+}
+
+.signals-list {
+  margin-top: 0.35rem;
+}
+.signals-item {
   display: flex;
-  gap: 0.3rem;
-  justify-content: flex-end;
-  align-items: center;
-  margin-top: 0.15rem;
+  gap: 0.55rem;
+  align-items: baseline;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+.signals-item a {
+  color: var(--text) !important;
+  text-decoration: none !important;
+  font-weight: 600;
+}
+.signals-item a:hover {
+  color: var(--accent) !important;
+}
+.signals-tag {
+  flex: 0 0 auto;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--hot);
+  border: 1px solid rgba(232, 184, 74, 0.35);
+  border-radius: 3px;
+  padding: 0.05rem 0.28rem;
+}
+.signals-meta {
+  font-size: 0.68rem;
+  color: var(--faint);
+  white-space: nowrap;
 }
 .rd-theme-hint {
   font-size: 0.68rem;
@@ -1333,7 +1394,8 @@ def _default_settings() -> dict[str, Any]:
         "sort_hot_first_stocks": True,
         "hot_sensitivity": "공격적",
         "media_region": "해외",
-        "ui_theme": "다크",
+        "ui_theme": "라이트",
+        "show_ticker": False,
         "use_signal_keywords": True,
         # 번역은 기본 OFF. ON이어도 HOT/NEW만 배치 1회로 호출해 할당량 절약
         "enable_translation": False,
@@ -1392,7 +1454,8 @@ def _ensure_source_keys(settings: dict[str, Any]) -> dict[str, Any]:
         settings["media_region"] = "해외"
     else:
         settings.setdefault("media_region", "해외")
-    settings["ui_theme"] = _normalize_ui_theme(settings.get("ui_theme", "다크"))
+    settings["ui_theme"] = _normalize_ui_theme(settings.get("ui_theme", "라이트"))
+    settings.setdefault("show_ticker", False)
     return settings
 
 
@@ -1413,7 +1476,7 @@ def init_session_settings() -> None:
     if "ui_theme_is_light" not in st.session_state:
         st.session_state["ui_theme_is_light"] = (
             _normalize_ui_theme(
-                st.session_state.settings.get("ui_theme", "다크")
+                st.session_state.settings.get("ui_theme", "라이트")
             )
             == "라이트"
         )
@@ -2776,7 +2839,7 @@ def _current_ui_theme() -> str:
     if "ui_theme_is_light" in st.session_state:
         return "라이트" if bool(st.session_state["ui_theme_is_light"]) else "다크"
     settings = st.session_state.get("settings") or {}
-    return _normalize_ui_theme(settings.get("ui_theme", "다크"))
+    return _normalize_ui_theme(settings.get("ui_theme", "라이트"))
 
 
 def _sync_ui_theme_to_settings(theme: str | None = None) -> str:
@@ -2947,6 +3010,7 @@ def prepare_rows(
     def _sort_key(r: dict[str, Any]) -> tuple[Any, ...]:
         return (
             1 if r.get("is_breaking_pinned") else 0,
+            1 if r.get("watch_hits") else 0,
             r["heat_score"],
             1 if r["is_new"] else 0,
             r["item"].get("published_iso", ""),
@@ -3048,11 +3112,6 @@ def _news_card_html(row: dict[str, Any], mode: DisplayMode, _watchlist: list[str
     item = row["item"]
     translated = row["translated"]
     time_str = _format_time(item["published_iso"])
-    rel_time = _relative_time(item["published_iso"])
-    link_raw = item.get("link", "") or ""
-    link = html.escape(link_raw, quote=True)
-    has_link = bool(link_raw)
-    domain = _source_domain(link_raw)
     article_id = str(row.get("id") or _item_id(item))
     read_href = html.escape(_read_href(article_id), quote=True)
 
@@ -3063,26 +3122,21 @@ def _news_card_html(row: dict[str, Any], mode: DisplayMode, _watchlist: list[str
         en_html = html.escape(item.get("title", ""))
         ko_html = html.escape(translated)
 
+    # 뱃지: 속보 > NEW > HOT > WATCH 중 최대 2개
     pills = ""
     if row.get("is_breaking_pinned") or row.get("is_breaking"):
         pills += '<span class="pill pill-breaking">속보</span>'
-    if row["is_new"]:
+    if row.get("is_new"):
         pills += '<span class="pill pill-new">NEW</span>'
-    tier = row.get("heat_tier")
-    if tier == "hot+":
-        pills += (
-            f'<span class="pill pill-hot-plus">HOT+{row.get("heat_score", 0)}</span>'
-        )
-    elif tier == "hot":
-        pills += f'<span class="pill pill-hot">HOT·{row.get("heat_score", 0)}</span>'
-    if row.get("signal_hits") and not row.get("watch_hits"):
-        pills += '<span class="pill pill-signal">SIGNAL</span>'
+    elif row.get("is_hot"):
+        pills += '<span class="pill pill-hot">HOT</span>'
+    if row.get("watch_hits") and "pill-breaking" not in pills:
+        pills += '<span class="pill pill-watch">WATCH</span>'
     flags = f'<div class="news-flags">{pills}</div>' if pills else ""
 
     stack: list[str] = ['<div class="headline-stack">']
     raw_title = item.get("title", "")
     same_as_origin = translated.strip() == raw_title.strip()
-    # 헤드라인 → 우리 읽기 페이지 (원문은 읽기 페이지의 CTA)
     if mode == "both":
         stack.append(
             f"<div>{_linked_or_span(en_html, read_href, True, 'headline-en')}</div>"
@@ -3101,24 +3155,12 @@ def _news_card_html(row: dict[str, Any], mode: DisplayMode, _watchlist: list[str
         stack.append(_linked_or_span(ko_html, read_href, True, "headline-en"))
     stack.append("</div>")
 
-    domain_html = html.escape(domain) if domain else "rss"
     source_html = html.escape(item["source"])
-    # 도메인만 원문 직접 링크 (고급 사용자용)
-    host_html = (
-        f'<a href="{link}" target="_blank" rel="noopener" title="원문 바로가기">'
-        f"{domain_html}</a>"
-        if has_link
-        else domain_html
-    )
     meta = (
         f'<div class="meta-line">'
         f'<span class="news-time">{html.escape(time_str)}</span>'
         f'<span class="meta-dot">·</span>'
-        f"<span>{html.escape(rel_time)}</span>"
-        f'<span class="meta-dot">·</span>'
         f'<span class="meta-source">{source_html}</span>'
-        f'<span class="meta-dot">·</span>'
-        f"{host_html}"
         f"</div>"
     )
 
@@ -3127,6 +3169,8 @@ def _news_card_html(row: dict[str, Any], mode: DisplayMode, _watchlist: list[str
         classes.append("is-new")
     if row["is_hot"]:
         classes.append("is-hot")
+    if row.get("watch_hits"):
+        classes.append("is-watch")
     if row.get("is_breaking_pinned") or row.get("is_breaking"):
         classes.append("is-breaking")
 
@@ -3211,7 +3255,7 @@ def _on_media_region_change() -> None:
 
 
 def _render_global_feed_controls(settings: dict[str, Any]) -> None:
-    """전역 컨트롤 · HOT 민감도(버튼) + 매체 (한 박스)."""
+    """사이드바용 공통 필터 · HOT 민감도 + 매체."""
     hot_key = "hot_sensitivity_radio"
     region_key = "media_region_radio"
     if hot_key not in st.session_state:
@@ -3223,47 +3267,39 @@ def _render_global_feed_controls(settings: dict[str, Any]) -> None:
             settings.get("media_region", "해외")
         )
 
-    current_hot = _normalize_hot_sensitivity(
-        st.session_state.get(hot_key, settings.get("hot_sensitivity", "공격적"))
+    st.markdown('<div class="sidebar-label">공통 필터</div>', unsafe_allow_html=True)
+    st.caption("코인 · 주식 탭에 함께 적용됩니다.")
+    st.caption("HOT 민감도")
+    st.radio(
+        "HOT 민감도",
+        list(HOT_SENSITIVITY_OPTIONS),
+        horizontal=True,
+        key=hot_key,
+        label_visibility="collapsed",
+        on_change=_on_hot_sensitivity_change,
+    )
+    st.caption("매체")
+    st.radio(
+        "매체",
+        list(MEDIA_REGION_OPTIONS),
+        horizontal=True,
+        key=region_key,
+        label_visibility="collapsed",
+        on_change=_on_media_region_change,
     )
 
-    with st.container(border=True):
-        st.markdown(
-            '<div class="global-feed-kicker">공통 필터</div>'
-            '<div class="global-feed-sub">'
-            "아래 설정은 코인 · 주식 두 패널에 동시에 적용됩니다."
-            "</div>",
-            unsafe_allow_html=True,
-        )
-        c_hot, c_region = st.columns(2, gap="medium")
-        with c_hot:
-            st.caption("HOT 민감도")
-            # radio 대신 버튼 — z-index/iframe에 가려 클릭이 안 되던 이슈 완화
-            bcols = st.columns(len(HOT_SENSITIVITY_OPTIONS), gap="small")
-            for col, opt in zip(bcols, HOT_SENSITIVITY_OPTIONS):
-                with col:
-                    is_active = opt == current_hot
-                    if st.button(
-                        opt,
-                        key=f"hot_sens_btn_{opt}",
-                        use_container_width=True,
-                        type="primary" if is_active else "secondary",
-                    ):
-                        if opt != current_hot:
-                            st.session_state[hot_key] = opt
-                            settings["hot_sensitivity"] = opt
-                            st.session_state.settings = settings
-                            st.rerun()
-        with c_region:
-            st.caption("매체")
-            st.radio(
-                "매체",
-                list(MEDIA_REGION_OPTIONS),
-                horizontal=True,
-                key=region_key,
-                label_visibility="collapsed",
-                on_change=_on_media_region_change,
-            )
+
+def _render_sidebar_status() -> None:
+    """사이드바에 RSS/상태 요약 (직전·현재 세션 값)."""
+    st.markdown('<div class="sidebar-label">상태</div>', unsafe_allow_html=True)
+    health = st.session_state.get("last_rss_health") or {}
+    is_stale = bool(st.session_state.get("last_rss_is_stale"))
+    if health:
+        st.caption(_rss_status_line(health, is_stale))
+    else:
+        st.caption("RSS 수집 전 · 잠시만 기다려 주세요.")
+    product = _status_product_label()
+    st.caption(product)
 
 
 def _resolve_panel_sort(settings: dict[str, Any], panel: str) -> bool:
@@ -3345,13 +3381,11 @@ def render_feed_panel_head(
     sources_caption: str,
     ad_label: str | None = None,
 ) -> None:
-    """패널 제목·소스 캡션 (HOT/매체 컨트롤은 제목과 정렬 사이에 전역 배치)."""
-    # ad_label: 하위 호환용. 홈은 중앙(home-top) 광고만 사용 — 열 상단 광고는 렌더하지 않음.
+    """패널 메타만 얇게 (카테고리는 상단 탭이 담당)."""
     _ = ad_label
     st.markdown(
         f'<div class="rd-panel-marker" data-rd-cat="{html.escape(title)}" aria-hidden="true"></div>'
         f'<div class="panel-head {css_class}">'
-        f'<div class="panel-title {css_class}">{html.escape(title)}</div>'
         f'<div class="panel-meta">{html.escape(sources_caption)}</div>'
         f"</div>",
         unsafe_allow_html=True,
@@ -3376,26 +3410,20 @@ def render_feed_panel_body(
         st.session_state.settings,
         panel="crypto" if category == "crypto" else "stocks",
     )
-    new_count = sum(1 for r in rows if r["is_new"])
     hot_count = sum(1 for r in rows if r["is_hot"])
     sort_label = _feed_sort_label(sort_hot_first)
-    sens_label = _normalize_hot_sensitivity(hot_sensitivity)
-    region_label = _normalize_media_region(media_region)
     st.markdown(
-        f'<div class="feed-meta">{len(rows)} results'
-        f' · 최근 48시간'
-        f' · {new_count} new · {hot_count} hot'
-        f' · HOT {html.escape(sens_label)}'
-        f' · 매체 {html.escape(region_label)}'
+        f'<div class="feed-meta">{len(rows)}건'
         f' · {sort_label}'
-        f' · sync {_now_kst().strftime("%H:%M:%S")} KST</div>',
+        f' · {hot_count} HOT'
+        f' · {_now_kst().strftime("%H:%M")} KST</div>',
         unsafe_allow_html=True,
     )
 
     if not rows:
         st.info(
             "표시할 속보가 없습니다. "
-            "① 소스 체크 ② 매체(해외/국내) ③ 키워드 필터 ④ RSS 실패(상단 배너)를 확인해 주세요."
+            "사이드바에서 소스·매체·키워드를 확인해 주세요."
         )
         return
 
@@ -3410,66 +3438,134 @@ def _load_x_bearer_token() -> str:
     return _load_config_str("X_BEARER_TOKEN")
 
 
+_SIGNAL_EXCHANGE_RE = re.compile(
+    r"(?i)\b(listing|delist|상장|거래지원|에어드랍|airdrop|입출금|마켓\s*추가|"
+    r"will\s+list|new\s+listing|거래\s*유의|투자유의)\b"
+)
+_SIGNAL_MACRO_RE = re.compile(
+    r"(?i)\b(FOMC|Fed|rate\s+cut|rate\s+hike|CPI|NFP|한은|기준금리|금리\s*결정|"
+    r"federal\s+reserve|ECB|BOJ)\b"
+)
+
+KR_SIGNAL_FEEDS = [
+    {
+        "source": "Fed",
+        "url": "https://www.federalreserve.gov/feeds/press_all.xml",
+        "kind": "매크로",
+    },
+]
+
+
+@st.cache_data(ttl=90, show_spinner=False)
+def fetch_macro_signal_items(limit: int = 6) -> list[dict[str, Any]]:
+    """매크로 시그널 · Fed 공개 RSS."""
+    out: list[dict[str, Any]] = []
+    for feed in KR_SIGNAL_FEEDS:
+        try:
+            entries, ok = _entries_from_feed(feed)
+            if not ok:
+                continue
+            for e in entries[:5]:
+                out.append(
+                    {
+                        "title": e.get("title") or "",
+                        "link": e.get("link") or "",
+                        "source": feed["source"],
+                        "kind": feed["kind"],
+                        "published_iso": e.get("published_iso") or "",
+                    }
+                )
+        except Exception:
+            continue
+    out.sort(key=lambda x: x.get("published_iso") or "", reverse=True)
+    return out[:limit]
+
+
+def _derive_exchange_signals_from_news(
+    news_items: list[dict[str, Any]],
+    *,
+    limit: int = 6,
+) -> list[dict[str, Any]]:
+    """코인 RSS 중 상장·거래지원·유의 키워드 → 거래소 시그널."""
+    hits: list[dict[str, Any]] = []
+    for item in news_items:
+        title = str(item.get("title") or "")
+        if not _SIGNAL_EXCHANGE_RE.search(title):
+            continue
+        hits.append(
+            {
+                "title": title,
+                "link": item.get("link") or "",
+                "source": item.get("source") or "RSS",
+                "kind": "거래소",
+                "published_iso": item.get("published_iso") or "",
+            }
+        )
+        if len(hits) >= limit:
+            break
+    return hits
+
+
 def fetch_signals_feed() -> list[dict[str, Any]]:
-    """
-    X 인플루언서·시그널 피드 훅.
-    토큰이 없거나 아직 미구현이면 빈 목록 (실 API 호출 없음).
-    """
-    token = _load_x_bearer_token()
-    if not token:
-        return []
-    # 이후 스프린트: X API로 타임라인 수집 후 카드 형태로 반환
-    _ = token
-    return []
+    """한국형 시그널 MVP · 매크로 RSS + 거래소/상장 키워드 파생."""
+    _ = _load_x_bearer_token()
+    crypto_cached = list(st.session_state.get("last_crypto_news") or [])
+    exchange = _derive_exchange_signals_from_news(crypto_cached, limit=5)
+    macro = fetch_macro_signal_items(limit=5)
+    merged = exchange + macro
+    merged.sort(key=lambda x: x.get("published_iso") or "", reverse=True)
+    seen: set[str] = set()
+    uniq: list[dict[str, Any]] = []
+    for s in merged:
+        key = re.sub(r"\s+", " ", (s.get("title") or "").strip().lower())
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        uniq.append(s)
+    return uniq[:10]
 
 
 def _render_signals_teaser() -> None:
-    """SIGNALS 영역 — 실데이터 없으면 출시 예정 티저."""
-    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
-
+    """SIGNALS · 매크로·거래소 시그널 MVP (피드 아래)."""
+    st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
     signals = fetch_signals_feed()
-    if signals:
-        # 이후: 실피드 카드 렌더
-        return
-
-    # 개인 무료 모드: 구독 CTA 없이 준비 중 안내만
-    if not billing.pro_billing_enabled():
-        st.markdown(
-            '<div class="signals-teaser">'
-            "<div class=\"signals-kicker\">SIGNALS · 출시 예정</div>"
-            "<div class=\"signals-title\">X 인플루언서·시그널 속보</div>"
-            "<div class=\"signals-body\">"
-            "X 인플루언서·시그널은 준비 중입니다. "
-            "지금은 위쪽 코인 · 주식 매체 RSS 속보를 이용해 주세요."
-            "</div></div>",
-            unsafe_allow_html=True,
-        )
-        return
-
-    # (보관) Pro 빌링 ON 일 때만 아래 분기 사용
-    if auth_quota.is_pro():
-        st.markdown(
-            '<div class="signals-teaser is-pro">'
-            "<div class=\"signals-kicker\">SIGNALS · Pro</div>"
-            "<div class=\"signals-title\">X 인플루언서·시그널 속보</div>"
-            "<div class=\"signals-body\">"
-            "시그널 피드는 준비 중입니다. 연결되는 대로 이 영역에 표시됩니다."
-            "</div></div>",
-            unsafe_allow_html=True,
-        )
-        return
 
     st.markdown(
         '<div class="signals-teaser">'
-        "<div class=\"signals-kicker\">SIGNALS · Locked</div>"
-        "<div class=\"signals-title\">X 인플루언서·시그널 속보</div>"
-        "<div class=\"signals-body\">"
-        "검증된 매체 RSS는 무료로 계속 볼 수 있습니다. "
-        f"Pro({html.escape(billing.PRO_PRICE_LABEL)})는 "
-        "시그널 우선 + 광고 제거입니다."
-        "</div></div>",
+        '<div class="signals-kicker">SIGNALS · 한국형 MVP</div>'
+        '<div class="signals-title">거래소·매크로 시그널</div>'
+        '<div class="signals-body">'
+        "상장·거래지원 키워드와 Fed 공식 발표를 모읍니다. "
+        "X 큐레이션은 이후 확장합니다."
+        "</div>",
         unsafe_allow_html=True,
     )
+    if not signals:
+        st.caption("표시할 시그널이 아직 없습니다. 코인 피드 갱신 후 다시 확인해 주세요.")
+        st.markdown("</div>", unsafe_allow_html=True)
+        return
+
+    rows_html: list[str] = ['<div class="signals-list">']
+    for s in signals:
+        title = html.escape(s.get("title") or "")
+        link = html.escape(s.get("link") or "", quote=True)
+        kind = html.escape(s.get("kind") or "시그널")
+        src = html.escape(s.get("source") or "")
+        when = html.escape(_relative_time(s.get("published_iso") or ""))
+        title_html = (
+            f'<a href="{link}" target="_blank" rel="noopener">{title}</a>'
+            if link
+            else title
+        )
+        rows_html.append(
+            f'<div class="signals-item">'
+            f'<span class="signals-tag">{kind}</span>'
+            f"<div>{title_html}"
+            f'<div class="signals-meta">{src} · {when}</div>'
+            f"</div></div>"
+        )
+    rows_html.append("</div></div>")
+    st.markdown("".join(rows_html), unsafe_allow_html=True)
 
 
 def _update_seen_and_alerts(
@@ -3497,7 +3593,9 @@ def _update_seen_and_alerts(
                 settings.get("alert_on_source")
                 and settings.get("sources_alert", {}).get(source, False)
             )
-            watch_alert = settings.get("alert_on_watchlist") and row["is_hot"]
+            watch_alert = settings.get("alert_on_watchlist") and (
+                row["is_hot"] or bool(row.get("watch_hits"))
+            )
             if source_alert or watch_alert:
                 beep_targets.append(row["id"])
 
@@ -3705,7 +3803,13 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     st.markdown('<div class="sidebar-label">표시</div>', unsafe_allow_html=True)
     theme = _current_ui_theme()
     settings["ui_theme"] = theme
-    st.caption(f"보기 모드 · 현재 {'라이트' if theme == '라이트' else '다크'} (상단 토글로 변경)")
+    st.caption(f"보기 모드 · 현재 {'라이트' if theme == '라이트' else '다크'} (상단 토글)")
+    settings["show_ticker"] = st.toggle(
+        "가격 티커 표시",
+        value=bool(settings.get("show_ticker", False)),
+        key="show_ticker_toggle",
+        help="끄면 첫 화면이 피드에만 집중됩니다 (권장)",
+    )
 
     if SHOW_APP_TRANSLATION_UI:
         mode_label = st.radio(
@@ -3731,14 +3835,19 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
         index=_limit_opts.index(_cur_limit) if _cur_limit in _limit_opts else 1,
     )
 
+    # 2-b) 공통 필터 (HOT·매체) — 본문에서 사이드바로 이동
+    st.markdown("<div style='height:0.75rem'></div>", unsafe_allow_html=True)
+    _render_global_feed_controls(settings)
+
+    # 2-c) 상태 요약
+    st.markdown("<div style='height:0.75rem'></div>", unsafe_allow_html=True)
+    _render_sidebar_status()
+
     # 브라우저 번역 안내 (앱 내 번역 토글 대체)
     st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
     st.markdown('<div class="sidebar-label">영어 읽기</div>', unsafe_allow_html=True)
     st.caption(
         "헤드라인 → 「원문 보기」 → 뉴스 사이트에서 Chrome·Edge **번역**을 쓰세요."
-    )
-    st.caption(
-        "이 터미널(Streamlit) 화면을 통째로 번역하면 화면 오류가 날 수 있습니다."
     )
 
     if SHOW_APP_TRANSLATION_UI:
@@ -4059,8 +4168,7 @@ def _render_brand_header() -> None:
         st.markdown(
             f'<a class="rd-brand-home notranslate" href="?go_list=1" '
             f'title="목록으로" translate="no">{brand_inner}</a>'
-            '<div class="rd-brand-sub">Market News Terminal</div>'
-            '<div class="rd-brand-hint">검증 매체 속보 · 영어는 원문 보기 후 번역</div>',
+            '<div class="rd-brand-sub">Market News Terminal</div>',
             unsafe_allow_html=True,
         )
     with col_theme:
@@ -4254,13 +4362,14 @@ def main() -> None:
         render_reader_page(article)
         return
 
-    st_autorefresh(interval=60_000, key="news_autorefresh")
+    st_autorefresh(interval=30_000, key="news_autorefresh")
 
     with st.sidebar:
         mode, settings = render_sidebar()
 
     settings = render_title_with_hamburger(settings)
-    _render_coin_price_ticker()
+    if bool(settings.get("show_ticker", False)):
+        _render_coin_price_ticker()
     query_crypto = _resolve_panel_query("crypto")
     query_stocks = _resolve_panel_query("stocks")
 
@@ -4335,15 +4444,11 @@ def main() -> None:
         rss_health.get("stocks_fail") or []
     )
     banner_warn = status_warn or is_stale or fail_n > 0 or bool(rss_health.get("error"))
-    warn_cls = " is-warn" if banner_warn else ""
-    st.markdown(
-        f'<div class="status-banner{warn_cls}">'
-        f"<div>{html.escape(status_text)}</div>"
-        f'<div class="status-rss">{html.escape(rss_line)}</div>'
-        f"</div>",
-        unsafe_allow_html=True,
-    )
-    _render_home_ad("home-top", "Home")
+    st.session_state["last_rss_is_stale"] = bool(is_stale)
+
+    # 문제 있을 때만 본문에 짧은 경고 (평소에는 사이드바 상태만)
+    if banner_warn:
+        st.warning(f"{status_text} · {rss_line}")
 
     _update_seen_and_alerts(crypto_rows + stock_rows, settings)
 
@@ -4358,48 +4463,51 @@ def main() -> None:
         if enabled.get(s, True) and _source_matches_media_region(s, media_region)
     ]
 
-    # 1) 패널 제목 → 2) HOT/매체(정렬 직전) → 3) 정렬·피드
-    # 광고: 상단 중앙(home-top)만 유지. 열 상단(코인/주식) 광고는 제거.
-    head_crypto, head_stocks = st.columns(2, gap="medium")
-    with head_crypto:
-        render_feed_panel_head(
-            title=_category_label("crypto"),
-            css_class="crypto",
-            sources_caption=" · ".join(active_crypto) or "No sources",
-        )
-    with head_stocks:
-        render_feed_panel_head(
-            title=_category_label("stocks"),
-            css_class="stocks",
-            sources_caption=" · ".join(active_stocks) or "No sources",
-        )
+    # 코인 | 주식 탭 (한 카테고리만 전체 폭)
+    tab_key = "home_category_tab"
+    if tab_key not in st.session_state:
+        st.session_state[tab_key] = _category_label("crypto")
+    st.markdown('<div class="rd-cat-tabs" aria-hidden="true"></div>', unsafe_allow_html=True)
+    st.radio(
+        "카테고리",
+        [_category_label("crypto"), _category_label("stocks")],
+        horizontal=True,
+        key=tab_key,
+        label_visibility="collapsed",
+    )
+    active_label = st.session_state.get(tab_key, _category_label("crypto"))
+    if active_label == _category_label("stocks"):
+        active_cat: Category = "stocks"
+        active_rows = stock_rows
+        active_sources = active_stocks
+        active_sort = sort_stocks
+    else:
+        active_cat = "crypto"
+        active_rows = crypto_rows
+        active_sources = active_crypto
+        active_sort = sort_crypto
 
-    _render_global_feed_controls(settings)
+    render_feed_panel_head(
+        title=_category_label(active_cat),
+        css_class=active_cat,
+        sources_caption=f"{len(active_sources)}개 소스",
+    )
+    render_feed_panel_body(
+        rows=active_rows,
+        mode=mode,
+        watchlist=watchlist,
+        sort_hot_first=active_sort,
+        hot_sensitivity=hot_sensitivity,
+        media_region=media_region,
+        category=active_cat,
+    )
 
-    body_crypto, body_stocks = st.columns(2, gap="medium")
-    with body_crypto:
-        render_feed_panel_body(
-            rows=crypto_rows,
-            mode=mode,
-            watchlist=watchlist,
-            sort_hot_first=sort_crypto,
-            hot_sensitivity=hot_sensitivity,
-            media_region=media_region,
-            category="crypto",
-        )
-    with body_stocks:
-        render_feed_panel_body(
-            rows=stock_rows,
-            mode=mode,
-            watchlist=watchlist,
-            sort_hot_first=sort_stocks,
-            hot_sensitivity=hot_sensitivity,
-            media_region=media_region,
-            category="stocks",
-        )
-
-    _render_category_scroll_toast()
     _render_signals_teaser()
+    _render_home_ad("home-top", "Home")
+    st.caption(
+        "라디오 데스크 · 검증 매체 속보 · 코인·주식 한곳에서 · "
+        "공유·제보는 X에서 #라디오데스크"
+    )
 
 
 if __name__ == "__main__":
