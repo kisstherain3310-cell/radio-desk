@@ -58,14 +58,24 @@ CATEGORY_LABELS: dict[Category, str] = {
     "stocks": "주식",
 }
 
+THEME_OPTIONS = ("다크", "라이트")
 
-# 브랜드 로고 — logo_file/ 및 루트 투명 로고 우선
-BRAND_LOGO_CANDIDATES = (
-    "logo_file/radio-desk-logo-transparent-on-dark.png",  # 다크 UI용(글자 밝게)
-    "radio-desk-logo-transparent.png",                    # 원본 투명 로고
+# 브랜드 로고 — 테마별 후보
+BRAND_LOGO_CANDIDATES_DARK = (
+    "logo_file/radio-desk-logo-transparent-on-dark.png",
+    "radio-desk-logo-transparent.png",
     "logo_file/radio-desk-on-dark.png",
     "logo_file/radio-desk-primary-lockup.png",
     "logo_file/radio-desk-stacked-lockup.png",
+    "logo_file/radio-desk-icon-mark.png",
+    "logo_file/radio-desk-app-icon.png",
+    "logo.png",
+)
+BRAND_LOGO_CANDIDATES_LIGHT = (
+    "radio-desk-logo-transparent.png",
+    "logo_file/radio-desk-primary-lockup.png",
+    "logo_file/radio-desk-stacked-lockup.png",
+    "logo_file/radio-desk-logo-transparent-on-dark.png",
     "logo_file/radio-desk-icon-mark.png",
     "logo_file/radio-desk-app-icon.png",
     "logo.png",
@@ -76,19 +86,32 @@ def _category_label(category: Category | str) -> str:
     return CATEGORY_LABELS.get(category, str(category))  # type: ignore[arg-type]
 
 
-def _resolve_brand_logo_path() -> Path | None:
+def _normalize_ui_theme(value: Any) -> str:
+    if value in THEME_OPTIONS:
+        return str(value)
+    raw = str(value or "").strip().lower()
+    if raw in {"light", "라이트", "white"}:
+        return "라이트"
+    return "다크"
+
+
+def _resolve_brand_logo_path(theme: str | None = None) -> Path | None:
     root = Path(__file__).resolve().parent
-    for rel in BRAND_LOGO_CANDIDATES:
+    theme = _normalize_ui_theme(theme or "다크")
+    candidates = (
+        BRAND_LOGO_CANDIDATES_LIGHT if theme == "라이트" else BRAND_LOGO_CANDIDATES_DARK
+    )
+    for rel in candidates:
         path = root / rel
         if path.is_file():
             return path
     return None
 
 
-@lru_cache(maxsize=1)
-def _brand_logo_data_uri() -> str:
+@lru_cache(maxsize=4)
+def _brand_logo_data_uri(theme: str = "다크") -> str:
     """로고 PNG → data URI (크롬 자동번역이 텍스트 로고를 깨뜨리는 것 방지)."""
-    path = _resolve_brand_logo_path()
+    path = _resolve_brand_logo_path(theme)
     if path is None:
         return ""
     raw = path.read_bytes()
@@ -303,7 +326,8 @@ CUSTOM_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap');
 
-:root {
+:root,
+html[data-rd-theme="dark"] {
   --bg: #0d0f13;
   --bg-elevated: #12151b;
   --bg-hover: #161a22;
@@ -320,6 +344,35 @@ CUSTOM_CSS = """
   --stocks: #9aa8d8;
   --hot: #e8b84a;
   --new: #6e9fff;
+  --brand-fg: #f3f5f9;
+  --panel-card: rgba(255, 255, 255, 0.015);
+  --ticker-bg: rgba(126, 200, 168, 0.06);
+  --toast-bg: rgba(18, 24, 36, 0.92);
+  --sidebar-bg: #0f1218;
+}
+
+html[data-rd-theme="light"] {
+  --bg: #f4f6fa;
+  --bg-elevated: #ffffff;
+  --bg-hover: #eef1f6;
+  --line: rgba(20, 28, 45, 0.1);
+  --line-soft: rgba(20, 28, 45, 0.06);
+  --text: #1a2030;
+  --text-soft: #3a4458;
+  --muted: #5a6578;
+  --faint: #7a8496;
+  --accent: #3b6fd8;
+  --accent-dim: rgba(59, 111, 216, 0.1);
+  --accent-border: rgba(59, 111, 216, 0.28);
+  --crypto: #1f8a64;
+  --stocks: #4a5fa8;
+  --hot: #b8860b;
+  --new: #3b6fd8;
+  --brand-fg: #1a2030;
+  --panel-card: rgba(255, 255, 255, 0.92);
+  --ticker-bg: rgba(31, 138, 100, 0.08);
+  --toast-bg: rgba(255, 255, 255, 0.96);
+  --sidebar-bg: #eef1f6;
 }
 
 html, body, [class*="css"] {
@@ -332,6 +385,26 @@ html, body, [class*="css"] {
     radial-gradient(900px 420px at 92% 0%, rgba(126, 200, 168, 0.035), transparent 50%),
     var(--bg);
   color: var(--text);
+}
+
+html[data-rd-theme="light"] .stApp {
+  background:
+    radial-gradient(1000px 480px at 8% -8%, rgba(59, 111, 216, 0.06), transparent 55%),
+    radial-gradient(900px 420px at 92% 0%, rgba(31, 138, 100, 0.05), transparent 50%),
+    var(--bg);
+}
+
+section[data-testid="stSidebar"] {
+  background: var(--sidebar-bg) !important;
+}
+section[data-testid="stSidebar"] * {
+  color: var(--text);
+}
+section[data-testid="stSidebar"] .stMarkdown,
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span {
+  color: var(--text-soft) !important;
 }
 
 #MainMenu, footer { visibility: hidden; }
@@ -505,7 +578,7 @@ section[data-testid="stSidebar"] div[data-testid="stCheckbox"] label p {
 a.rd-brand-home {
   font-size: 1.55rem;
   font-weight: 800;
-  color: #f3f5f9 !important;
+  color: var(--brand-fg) !important;
   text-decoration: none !important;
   letter-spacing: -0.04em;
   line-height: 1.15;
@@ -514,7 +587,7 @@ a.rd-brand-home {
   cursor: pointer;
 }
 a.rd-brand-home:hover {
-  color: #6e9fff !important;
+  color: var(--accent) !important;
   opacity: 0.92;
 }
 a.rd-brand-home img.rd-brand-logo,
@@ -632,7 +705,7 @@ img.rd-brand-logo {
 }
 
 .news-item {
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--panel-card);
   border: 1px solid var(--line-soft);
   border-radius: 8px;
   padding: 0.62rem 0.75rem 0.68rem 0.75rem;
@@ -763,7 +836,7 @@ div[data-testid="stElementContainer"]:has(iframe[height="1"]) {
   margin: 0.35rem 0 0.65rem 0;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(126, 200, 168, 0.06);
+  background: var(--ticker-bg);
   mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
 }
 .rd-ticker-track {
@@ -1197,6 +1270,47 @@ section.stMain div.stButton > button[data-testid="baseButton-secondary"]:hover {
     max-width: 100% !important;
   }
 }
+
+/* 보기 모드(테마) 토글 */
+.rd-theme-toggle {
+  display: flex;
+  gap: 0.3rem;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 0.15rem;
+}
+.rd-theme-hint {
+  font-size: 0.68rem;
+  color: var(--faint);
+  margin: 0 0.25rem 0 0;
+}
+
+html[data-rd-theme="light"] .headline-en,
+html[data-rd-theme="light"] .headline-en a {
+  color: var(--text) !important;
+}
+html[data-rd-theme="light"] .headline-ko,
+html[data-rd-theme="light"] .headline-ko a {
+  color: var(--muted) !important;
+}
+html[data-rd-theme="light"] .feed-meta,
+html[data-rd-theme="light"] .meta-line,
+html[data-rd-theme="light"] .panel-meta {
+  color: var(--faint) !important;
+}
+html[data-rd-theme="light"] .status-banner {
+  background: rgba(59, 111, 216, 0.08);
+  border-color: rgba(59, 111, 216, 0.22);
+}
+html[data-rd-theme="light"] #rd-cat-toast {
+  background: var(--toast-bg);
+  color: var(--text);
+  border-color: var(--line);
+}
+html[data-rd-theme="light"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker) {
+  background: rgba(59, 111, 216, 0.08);
+  border-color: rgba(59, 111, 216, 0.35) !important;
+}
 </style>
 """
 
@@ -1219,6 +1333,7 @@ def _default_settings() -> dict[str, Any]:
         "sort_hot_first_stocks": True,
         "hot_sensitivity": "공격적",
         "media_region": "해외",
+        "ui_theme": "다크",
         "use_signal_keywords": True,
         # 번역은 기본 OFF. ON이어도 HOT/NEW만 배치 1회로 호출해 할당량 절약
         "enable_translation": False,
@@ -1277,6 +1392,7 @@ def _ensure_source_keys(settings: dict[str, Any]) -> dict[str, Any]:
         settings["media_region"] = "해외"
     else:
         settings.setdefault("media_region", "해외")
+    settings["ui_theme"] = _normalize_ui_theme(settings.get("ui_theme", "다크"))
     return settings
 
 
@@ -2644,8 +2760,37 @@ def _inject_web_push_prompt() -> None:
     )
 
 
+def _current_ui_theme() -> str:
+    """위젯(헤더/사이드바) 값이 있으면 우선, 없으면 settings."""
+    label = st.session_state.get("ui_theme_radio")
+    if label in THEME_OPTIONS:
+        return str(label)
+    settings = st.session_state.get("settings") or {}
+    return _normalize_ui_theme(settings.get("ui_theme", "다크"))
+
+
 def inject_css() -> None:
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+    theme = _current_ui_theme()
+    if isinstance(st.session_state.get("settings"), dict):
+        st.session_state.settings["ui_theme"] = theme
+    theme_attr = "light" if theme == "라이트" else "dark"
+    # 부모 document 에 테마 속성 적용 (CSS 변수 전환)
+    components.html(
+        f"""
+        <script>
+        (function () {{
+          const doc = window.parent.document;
+          doc.documentElement.setAttribute('data-rd-theme', '{theme_attr}');
+          try {{
+            window.parent.localStorage.setItem('rd_ui_theme', '{theme_attr}');
+          }} catch (e) {{}}
+        }})();
+        </script>
+        """,
+        height=1,
+        scrolling=False,
+    )
     # 브라우저 자동번역이 Streamlit DOM을 깨며 removeChild 오류를 내는 경우 완화
     st.markdown(
         """
@@ -3538,6 +3683,24 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     # 2) 표시 모드
     st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
     st.markdown('<div class="sidebar-label">표시</div>', unsafe_allow_html=True)
+
+    theme_key = "ui_theme_radio"
+    if theme_key not in st.session_state:
+        st.session_state[theme_key] = _normalize_ui_theme(
+            settings.get("ui_theme", "다크")
+        )
+    st.caption("보기 모드")
+    picked_theme = st.radio(
+        "보기 모드",
+        list(THEME_OPTIONS),
+        horizontal=True,
+        key=theme_key,
+        label_visibility="collapsed",
+        help="다크 모드 / 라이트 모드",
+    )
+    settings["ui_theme"] = _normalize_ui_theme(picked_theme)
+    st.session_state.settings = settings
+
     if SHOW_APP_TRANSLATION_UI:
         mode_label = st.radio(
             "표시 모드",
@@ -3866,22 +4029,26 @@ def _render_hamburger_only() -> None:
 
 def _render_brand_header() -> None:
     """
-    햄버거 + 로고.
+    햄버거 + 로고 + 보기 모드(다크/라이트).
     로고는 iframe 밖 링크로 두어 읽기 화면(?view=read)에서도 목록(첫 화면)으로 돌아가게 함.
     텍스트 대신 이미지 로고를 써서 크롬 자동번역이 브랜드명을 깨뜨리지 않게 함.
     """
-    col_ham, col_brand = st.columns([0.55, 9.45], gap="small")
+    settings = st.session_state.get("settings") or {}
+    theme = _current_ui_theme()
+    settings["ui_theme"] = theme
+    st.session_state.settings = settings
+
+    col_ham, col_brand, col_theme = st.columns([0.55, 7.6, 2.0], gap="small")
     with col_ham:
         _render_hamburger_only()
     with col_brand:
-        logo_uri = _brand_logo_data_uri()
+        logo_uri = _brand_logo_data_uri(theme)
         if logo_uri:
             brand_inner = (
                 f'<img class="rd-brand-logo" src="{logo_uri}" '
                 f'alt="라디오 데스크" />'
             )
         else:
-            # logo.png 없을 때만 텍스트 폴백
             brand_inner = "라디오 데스크"
         st.markdown(
             f'<a class="rd-brand-home notranslate" href="?go_list=1" '
@@ -3890,6 +4057,26 @@ def _render_brand_header() -> None:
             '<div class="rd-brand-hint">검증 매체 속보 · 영어는 원문 보기 후 번역</div>',
             unsafe_allow_html=True,
         )
+    with col_theme:
+        st.markdown(
+            '<div class="rd-theme-hint">보기 모드</div>',
+            unsafe_allow_html=True,
+        )
+        tcols = st.columns(2, gap="small")
+        for col, opt in zip(tcols, THEME_OPTIONS):
+            with col:
+                active = opt == theme
+                if st.button(
+                    opt,
+                    key=f"header_theme_btn_{opt}",
+                    use_container_width=True,
+                    type="primary" if active else "secondary",
+                ):
+                    if opt != theme:
+                        settings["ui_theme"] = opt
+                        st.session_state.settings = settings
+                        st.session_state["ui_theme_radio"] = opt
+                        st.rerun()
 
 
 def _render_category_scroll_toast() -> None:
