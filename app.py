@@ -57,8 +57,13 @@ CATEGORY_LABELS: dict[Category, str] = {
     "crypto": "코인",
     "stocks": "주식",
 }
+CATEGORY_LABELS_EN: dict[Category, str] = {
+    "crypto": "Crypto",
+    "stocks": "Stocks",
+}
 
 THEME_OPTIONS = ("다크", "라이트")
+UI_LANG_OPTIONS = ("ko", "en")
 
 # 브랜드 로고 — 테마별 후보
 BRAND_LOGO_CANDIDATES_DARK = (
@@ -83,9 +88,131 @@ BRAND_LOGO_CANDIDATES_LIGHT = (
     "logo.png",
 )
 
+# 주요 UI 문자열 (헤드라인·매체명은 원문 유지)
+UI_TEXT: dict[str, dict[str, str]] = {
+    "ko": {
+        "lang_hint": "한 / EN",
+        "theme_hint": "다크 ↔ 라이트",
+        "brand_hint": "해외 원문 속보입니다. 영어면 주소창 오른쪽 <b>번역</b>을 켜 보세요.",
+        "back_home": "목록으로",
+        "sort_latest": "최신순",
+        "sort_hot": "HOT순",
+        "kw_crypto": "키워드 · btc, eth…",
+        "kw_stocks": "키워드 · nvidia, fed…",
+        "sources_n": "{n}개 소스",
+        "feed_meta": "{n}건 · {sort} · {hot} HOT · {time} KST",
+        "empty_feed": "표시할 속보가 없습니다. 사이드바에서 소스·매체·키워드를 확인해 주세요.",
+        "footer": "라디오 데스크 · 검증 매체 속보 · 코인·주식 한곳에서 · 공유·제보는 X에서 #라디오데스크",
+        "sentiment_crypto": "Fear & Greed",
+        "sentiment_stocks": "VIX",
+        "sentiment_disclaimer": "투자 조언 아님 · 시장 심리 참고",
+        "sentiment_hint_fear": "공포가 클수록 저가 매수 기회로 보는 시각이 있습니다",
+        "sentiment_hint_greed": "탐욕이 클수록 과열·조정 주의로 보는 시각이 있습니다",
+        "sentiment_hint_neutral": "중립 구간입니다",
+        "sentiment_hint_vix_high": "변동성↑ · 불안·매도 심리 우세 해석이 많습니다",
+        "sentiment_hint_vix_low": "변동성↓ · 안심·과열 해석이 많습니다",
+        "extreme_fear": "극단적 공포",
+        "fear": "공포",
+        "neutral": "중립",
+        "greed": "탐욕",
+        "extreme_greed": "극단적 탐욕",
+        "press_crypto": "Crypto",
+        "press_stocks": "Stocks",
+        "quotes": "Quotes",
+    },
+    "en": {
+        "lang_hint": "KO / EN",
+        "theme_hint": "Dark ↔ Light",
+        "brand_hint": "Overseas source headlines. Use your browser’s address-bar <b>Translate</b> for Korean.",
+        "back_home": "Back to list",
+        "sort_latest": "Latest",
+        "sort_hot": "HOT",
+        "kw_crypto": "Filter · btc, eth…",
+        "kw_stocks": "Filter · nvidia, fed…",
+        "sources_n": "{n} sources",
+        "feed_meta": "{n} items · {sort} · {hot} HOT · {time} KST",
+        "empty_feed": "No headlines to show. Check sources, region, and keywords in the sidebar.",
+        "footer": "Radio Desk · verified-media headlines · crypto & stocks · share with #RadioDesk",
+        "sentiment_crypto": "Fear & Greed",
+        "sentiment_stocks": "VIX",
+        "sentiment_disclaimer": "Not advice · market mood only",
+        "sentiment_hint_fear": "High fear is often read as a potential buy-the-dip zone",
+        "sentiment_hint_greed": "High greed is often read as late-cycle / caution",
+        "sentiment_hint_neutral": "Neutral zone",
+        "sentiment_hint_vix_high": "High vol · fear / selling pressure narrative",
+        "sentiment_hint_vix_low": "Low vol · complacency / late-cycle narrative",
+        "extreme_fear": "Extreme Fear",
+        "fear": "Fear",
+        "neutral": "Neutral",
+        "greed": "Greed",
+        "extreme_greed": "Extreme Greed",
+        "press_crypto": "Crypto",
+        "press_stocks": "Stocks",
+        "quotes": "Quotes",
+    },
+}
+
+
+def _detect_browser_lang() -> str:
+    """브라우저 locale·타임존으로 ko/en 추정 (완벽하지 않음)."""
+    loc = ""
+    tz = ""
+    try:
+        loc = str(getattr(st.context, "locale", "") or "").lower()
+    except Exception:
+        loc = ""
+    try:
+        tz = str(getattr(st.context, "timezone", "") or "")
+    except Exception:
+        tz = ""
+    if loc.startswith("ko") or tz == "Asia/Seoul":
+        return "ko"
+    return "en"
+
+
+def _ui_lang() -> str:
+    lang = st.session_state.get("ui_lang")
+    if lang in UI_LANG_OPTIONS:
+        return str(lang)
+    return "ko"
+
+
+def t(key: str, **kwargs: Any) -> str:
+    """UI 문자열. 헤드라인·언론사명은 번역하지 않음."""
+    lang = _ui_lang()
+    table = UI_TEXT.get(lang) or UI_TEXT["ko"]
+    text = table.get(key) or UI_TEXT["ko"].get(key) or key
+    if kwargs:
+        try:
+            return text.format(**kwargs)
+        except Exception:
+            return text
+    return text
+
+
+def _resolve_ui_lang(settings: dict[str, Any]) -> str:
+    """세션·설정·브라우저 추정 순으로 언어 확정."""
+    if "ui_lang_is_en" in st.session_state:
+        lang = "en" if bool(st.session_state.ui_lang_is_en) else "ko"
+    elif "ui_lang" in st.session_state and st.session_state.ui_lang in UI_LANG_OPTIONS:
+        lang = str(st.session_state.ui_lang)
+    else:
+        saved = settings.get("ui_lang")
+        if saved in UI_LANG_OPTIONS:
+            lang = str(saved)
+        else:
+            lang = _detect_browser_lang()
+        st.session_state.ui_lang_is_en = lang == "en"
+    st.session_state.ui_lang = lang
+    settings["ui_lang"] = lang
+    return lang
+
 
 def _category_label(category: Category | str) -> str:
-    return CATEGORY_LABELS.get(category, str(category))  # type: ignore[arg-type]
+    cat: Category = "stocks" if category == "stocks" else "crypto"
+    if _ui_lang() == "en":
+        return CATEGORY_LABELS_EN.get(cat, str(category))
+    return CATEGORY_LABELS.get(cat, str(category))
 
 
 def _normalize_ui_theme(value: Any) -> str:
@@ -1084,6 +1211,62 @@ html[data-rd-theme="light"] .rd-press-rail.is-stocks {
     transparent 70%
   );
 }
+
+/* 공포·탐욕 / VIX 심리 바 */
+.rd-sentiment {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.75rem;
+  margin: 0.05rem 0 0.65rem 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+}
+.rd-sentiment.is-fear {
+  border-color: rgba(224, 122, 122, 0.35);
+  background: linear-gradient(90deg, rgba(224, 122, 122, 0.12), transparent 70%);
+}
+.rd-sentiment.is-greed {
+  border-color: rgba(126, 200, 168, 0.35);
+  background: linear-gradient(90deg, rgba(126, 200, 168, 0.12), transparent 70%);
+}
+.rd-sentiment.is-neutral {
+  border-color: var(--line);
+}
+.rd-sentiment-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.rd-sentiment-score {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.rd-sentiment-class {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+.rd-sentiment-hint {
+  flex: 1 1 12rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.rd-sentiment-note {
+  font-size: 0.66rem;
+  color: var(--faint);
+}
+html[data-rd-theme="light"] .rd-sentiment {
+  background: rgba(20, 28, 45, 0.03);
+}
 @keyframes rd-ticker-marquee {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
@@ -1184,6 +1367,14 @@ mark.hl {
 html[data-rd-theme="light"] mark.hl {
   background: rgba(31, 138, 100, 0.14);
   color: #0f7a58;
+}
+mark.hl.hl-stocks {
+  background: rgba(154, 168, 216, 0.2);
+  color: var(--stocks);
+}
+html[data-rd-theme="light"] mark.hl.hl-stocks {
+  background: rgba(74, 95, 168, 0.14);
+  color: #3a4f96;
 }
 
 .status-banner {
@@ -1620,6 +1811,7 @@ def _default_settings() -> dict[str, Any]:
         "hot_sensitivity": "공격적",
         "media_region": "해외",
         "ui_theme": "라이트",
+        "ui_lang": "ko",
         "show_ticker": True,
         "use_signal_keywords": True,
         # 번역은 기본 OFF. ON이어도 HOT/NEW만 배치 1회로 호출해 할당량 절약
@@ -1690,6 +1882,8 @@ def _ensure_source_keys(settings: dict[str, Any]) -> dict[str, Any]:
     else:
         settings.setdefault("media_region", "해외")
     settings["ui_theme"] = _normalize_ui_theme(settings.get("ui_theme", "라이트"))
+    if settings.get("ui_lang") not in UI_LANG_OPTIONS:
+        settings["ui_lang"] = "ko"
     # 카테고리별 시세 티커 도입 — 이전 기본(OFF)에서 ON으로 한 번 올림
     if not settings.get("_price_ticker_v2"):
         settings["show_ticker"] = True
@@ -2580,6 +2774,43 @@ def _source_matches_media_region(source: str, media_region: str) -> bool:
     return True
 
 
+def _unique_highlight_terms(terms: list[str]) -> list[str]:
+    """중복 제거 · 긴 표기 우선 (Bitcoin이 BTC보다 먼저 매칭되도록)."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for raw in sorted((t.strip() for t in terms if t and t.strip()), key=len, reverse=True):
+        key = raw.lower()
+        if key in seen:
+            continue
+        # 1글자 영문 티커는 오탐이 많아 제외 (V/MA 등은 회사명 별칭만 사용)
+        if len(raw) == 1 and raw.isascii() and raw.isalpha():
+            continue
+        seen.add(key)
+        out.append(raw)
+    return out
+
+
+@lru_cache(maxsize=2)
+def _ticker_highlight_terms(category: str) -> tuple[str, ...]:
+    """시세 티커에 나오는 코인·주식 이름/심볼(+별칭)."""
+    terms: list[str] = []
+    if category == "crypto":
+        for sym, aliases in _COIN_HIGHLIGHT_ALIASES.items():
+            terms.append(sym)
+            terms.extend(aliases)
+        terms.extend(CRYPTO_HOT_EXTRA)
+    else:
+        for _yahoo, label in list(_STOCK_TICKER_KR) + list(_STOCK_TICKER_US):
+            terms.append(label)
+            terms.extend(_STOCK_HIGHLIGHT_ALIASES.get(label, ()))
+            # 야후 심볼도 3글자 이상이면 포함 (BRK-B 등)
+            sym = str(_yahoo).replace(".KS", "").replace(".KQ", "")
+            if len(sym) >= 3:
+                terms.append(sym)
+                terms.append(sym.replace("-", "."))
+    return tuple(_unique_highlight_terms(terms))
+
+
 def _heat_info(
     text: str,
     watchlist: list[str],
@@ -2592,6 +2823,7 @@ def _heat_info(
 
     코인·주식 모두 동일 임계값·로직을 쓰되, CRYPTO는 전용 키워드를
     추가로 매칭한다. 세션 내 클릭 수가 임계값 이상이면 HOT 보너스.
+    시세 티커 종목명은 하이라이트만 하고 HOT 점수에는 넣지 않는다.
     """
     sensitivity = _normalize_hot_sensitivity(hot_sensitivity)
     signal_terms = list(
@@ -2626,13 +2858,19 @@ def _heat_info(
         tier = "hot"
     else:
         tier = None
-    # 하이라이트는 워치리스트 우선, 시그널은 보조
-    highlight_terms = list(dict.fromkeys(watch_hits + signal_hits))
+
+    cat_key = "crypto" if category == "crypto" else "stocks"
+    ticker_hits = _matched_terms(text, list(_ticker_highlight_terms(cat_key)))
+    # 하이라이트: 워치 → 시그널 → 시세 티커 종목
+    highlight_terms = list(
+        dict.fromkeys(watch_hits + signal_hits + ticker_hits)
+    )
     return {
         "score": score,
         "tier": tier,
         "watch_hits": watch_hits,
         "signal_hits": signal_hits,
+        "ticker_hits": ticker_hits,
         "highlight_terms": highlight_terms,
         "is_hot": tier is not None,
         "clicks": clicks,
@@ -2796,14 +3034,23 @@ def _source_domain(link: str) -> str:
         return ""
 
 
-def _highlight_html(text: str, terms: list[str]) -> str:
+def _highlight_html(
+    text: str,
+    terms: list[str],
+    *,
+    category: Category | str = "crypto",
+) -> str:
     escaped = html.escape(text)
     if not terms:
         return escaped
+    mark_cls = "hl hl-stocks" if category == "stocks" else "hl"
     ordered = sorted({t for t in terms if t}, key=len, reverse=True)
     for term in ordered:
         pat = _term_boundary_pattern(html.escape(term))
-        escaped = pat.sub(lambda m: f'<mark class="hl">{m.group(0)}</mark>', escaped)
+        escaped = pat.sub(
+            lambda m: f'<mark class="{mark_cls}">{m.group(0)}</mark>',
+            escaped,
+        )
     return escaped
 
 
@@ -2925,6 +3172,112 @@ _STOCK_TICKER_US: tuple[tuple[str, str], ...] = (
     ("DIS", "DIS"),
 )
 
+# 시세 티커 표기 → 헤드라인 하이라이트용 별칭 (영·한 회사명 포함)
+_STOCK_HIGHLIGHT_ALIASES: dict[str, tuple[str, ...]] = {
+    "삼성전자": ("삼성전자", "Samsung Electronics", "Samsung"),
+    "SK하이닉스": ("SK하이닉스", "SK Hynix", "Hynix", "SK하이닉스"),
+    "LG에너지": ("LG에너지", "LG Energy Solution", "LG Energy", "LGES"),
+    "삼바": ("삼바", "삼성바이오", "Samsung Biologics"),
+    "현대차": ("현대차", "현대자동차", "Hyundai Motor", "Hyundai"),
+    "기아": ("기아", "Kia"),
+    "셀트리온": ("셀트리온", "Celltrion"),
+    "KB금융": ("KB금융", "KB Financial"),
+    "신한지주": ("신한지주", "Shinhan"),
+    "NAVER": ("NAVER", "Naver"),
+    "카카오": ("카카오", "Kakao"),
+    "삼성SDI": ("삼성SDI", "Samsung SDI"),
+    "LG화학": ("LG화학", "LG Chem"),
+    "현대모비스": ("현대모비스", "Hyundai Mobis", "Mobis"),
+    "삼성물산": ("삼성물산", "Samsung C&T"),
+    "LG전자": ("LG전자", "LG Electronics"),
+    "LG": ("LG Corp", "LG그룹"),
+    "SK이노": ("SK이노", "SK이노베이션", "SK Innovation"),
+    "SK": ("SK Inc", "SK그룹"),
+    "한국전력": ("한국전력", "한전", "KEPCO"),
+    "AAPL": ("AAPL", "Apple"),
+    "MSFT": ("MSFT", "Microsoft"),
+    "NVDA": ("NVDA", "Nvidia", "NVIDIA"),
+    "GOOGL": ("GOOGL", "GOOG", "Google", "Alphabet"),
+    "AMZN": ("AMZN", "Amazon"),
+    "META": ("META", "Facebook"),
+    "TSLA": ("TSLA", "Tesla"),
+    "BRK.B": ("BRK.B", "BRK-B", "Berkshire"),
+    "AVGO": ("AVGO", "Broadcom"),
+    "JPM": ("JPM", "JPMorgan", "JP Morgan"),
+    "V": ("Visa",),
+    "UNH": ("UNH", "UnitedHealth"),
+    "XOM": ("XOM", "Exxon"),
+    "JNJ": ("JNJ", "Johnson"),
+    "WMT": ("WMT", "Walmart"),
+    "MA": ("Mastercard", "MasterCard"),
+    "PG": ("P&G", "Procter & Gamble", "Procter"),
+    "HD": ("Home Depot",),
+    "CVX": ("CVX", "Chevron"),
+    "MRK": ("MRK", "Merck"),
+    "ABBV": ("ABBV", "AbbVie"),
+    "COST": ("COST", "Costco"),
+    "PEP": ("PEP", "Pepsi", "PepsiCo"),
+    "KO": ("Coca-Cola", "Coke"),
+    "NFLX": ("NFLX", "Netflix"),
+    "AMD": ("AMD",),
+    "ORCL": ("ORCL", "Oracle"),
+    "CRM": ("CRM", "Salesforce"),
+    "BAC": ("BAC", "Bank of America"),
+    "DIS": ("DIS", "Disney"),
+}
+
+# 시세 티커에 자주 나오는 코인 심볼 → 정식·한글명
+_COIN_HIGHLIGHT_ALIASES: dict[str, tuple[str, ...]] = {
+    "BTC": ("BTC", "Bitcoin", "비트코인"),
+    "ETH": ("ETH", "Ethereum", "이더리움"),
+    "USDT": ("USDT", "Tether"),
+    "BNB": ("BNB", "Binance Coin", "Binance"),
+    "XRP": ("XRP", "Ripple"),
+    "SOL": ("SOL", "Solana", "솔라나"),
+    "USDC": ("USDC",),
+    "DOGE": ("DOGE", "Dogecoin", "도지코인"),
+    "ADA": ("ADA", "Cardano", "카르다노"),
+    "TRX": ("TRX", "Tron", "트론"),
+    "TON": ("TON", "Toncoin"),
+    "AVAX": ("AVAX", "Avalanche"),
+    "SHIB": ("SHIB", "Shiba"),
+    "DOT": ("DOT", "Polkadot", "폴카닷"),
+    "LINK": ("LINK", "Chainlink"),
+    "BCH": ("BCH", "Bitcoin Cash"),
+    "NEAR": ("NEAR",),
+    "MATIC": ("MATIC", "Polygon", "폴리곤"),
+    "POL": ("POL", "Polygon"),
+    "LTC": ("LTC", "Litecoin", "라이트코인"),
+    "UNI": ("UNI", "Uniswap"),
+    "ICP": ("ICP", "Internet Computer"),
+    "APT": ("APT", "Aptos"),
+    "ATOM": ("ATOM", "Cosmos"),
+    "ETC": ("ETC", "Ethereum Classic"),
+    "XLM": ("XLM", "Stellar"),
+    "HBAR": ("HBAR", "Hedera"),
+    "FIL": ("FIL", "Filecoin"),
+    "ARB": ("ARB", "Arbitrum"),
+    "OP": ("OP", "Optimism"),
+    "IMX": ("IMX", "Immutable"),
+    "SUI": ("SUI",),
+    "PEPE": ("PEPE",),
+    "WIF": ("WIF",),
+    "RENDER": ("RENDER", "RNDR"),
+    "INJ": ("INJ", "Injective"),
+    "STX": ("STX", "Stacks"),
+    "AAVE": ("AAVE",),
+    "MKR": ("MKR", "Maker"),
+    "GRT": ("GRT", "The Graph"),
+    "ALGO": ("ALGO", "Algorand"),
+    "VET": ("VET", "VeChain"),
+    "SAND": ("SAND", "The Sandbox"),
+    "MANA": ("MANA", "Decentraland"),
+    "AXS": ("AXS", "Axie"),
+    "CRV": ("CRV", "Curve"),
+    "LDO": ("LDO", "Lido"),
+    "HYPE": ("HYPE", "Hyperliquid"),
+}
+
 _YAHOO_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -2968,6 +3321,7 @@ def fetch_coin_ticker_prices() -> list[dict[str, Any]]:
             out.append(
                 {
                     "symbol": sym,
+                    "name": str(row.get("name") or "").strip(),
                     "price": float(price),
                     "change_pct": float(chg or 0.0),
                     "currency": "USD",
@@ -3063,13 +3417,11 @@ def _render_market_price_ticker(category: Category) -> None:
     if category == "crypto":
         items = fetch_coin_ticker_prices()
         rail_cls = "is-crypto"
-        label = "Quotes"
-        aria = "주요 코인 시세"
+        aria = "crypto quotes" if _ui_lang() == "en" else "주요 코인 시세"
     else:
         items = fetch_stock_ticker_prices()
         rail_cls = "is-stocks"
-        label = "Quotes"
-        aria = "주요 주식 시세"
+        aria = "stock quotes" if _ui_lang() == "en" else "주요 주식 시세"
     if not items:
         return
     chips: list[str] = []
@@ -3090,11 +3442,127 @@ def _render_market_price_ticker(category: Category) -> None:
         )
     track = "".join(chips + chips)
     st.markdown(
-        f'<div class="rd-press-rail rd-price-rail {rail_cls}" aria-label="{aria}">'
-        f'<div class="rd-press-rail-label">{label}</div>'
+        f'<div class="rd-press-rail rd-price-rail {rail_cls}" aria-label="{html.escape(aria)}">'
+        f'<div class="rd-press-rail-label">{html.escape(t("quotes"))}</div>'
         f'<div class="rd-press-rail-viewport">'
         f'<div class="rd-press-rail-track rd-price-track">{track}</div>'
         f"</div></div>",
+        unsafe_allow_html=True,
+    )
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_crypto_fear_greed() -> dict[str, Any] | None:
+    """Alternative.me Crypto Fear & Greed Index."""
+    try:
+        resp = requests.get(
+            "https://api.alternative.me/fng/",
+            params={"limit": 1},
+            timeout=8,
+        )
+        resp.raise_for_status()
+        rows = (resp.json() or {}).get("data") or []
+        if not rows:
+            return None
+        row = rows[0]
+        return {
+            "score": int(float(row.get("value") or 0)),
+            "classification": str(row.get("value_classification") or ""),
+            "source": "alternative.me",
+        }
+    except Exception:
+        return None
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_vix_level() -> dict[str, Any] | None:
+    """CBOE VIX — 주식 공포 대용 지표."""
+    q = _yahoo_chart_quote("^VIX")
+    if not q:
+        return None
+    return {
+        "score": float(q["price"]),
+        "change_pct": float(q.get("change_pct") or 0.0),
+        "source": "CBOE VIX",
+    }
+
+
+def _fng_band(score: int) -> str:
+    if score <= 24:
+        return "extreme_fear"
+    if score <= 44:
+        return "fear"
+    if score <= 55:
+        return "neutral"
+    if score <= 74:
+        return "greed"
+    return "extreme_greed"
+
+
+def _vix_band(vix: float) -> str:
+    """VIX↑ = 공포. F&G와 비슷한 구간 라벨로 매핑."""
+    if vix >= 30:
+        return "extreme_fear"
+    if vix >= 22:
+        return "fear"
+    if vix >= 17:
+        return "neutral"
+    if vix >= 13:
+        return "greed"
+    return "extreme_greed"
+
+
+def _sentiment_tone(band: str) -> str:
+    if band in {"extreme_fear", "fear"}:
+        return "fear"
+    if band in {"extreme_greed", "greed"}:
+        return "greed"
+    return "neutral"
+
+
+def _render_market_sentiment(category: Category) -> None:
+    """코인: Fear & Greed · 주식: VIX. 매수/매도 '신호'가 아닌 심리 참고."""
+    if category == "crypto":
+        data = fetch_crypto_fear_greed()
+        if not data:
+            return
+        score = int(data["score"])
+        band = _fng_band(score)
+        tone = _sentiment_tone(band)
+        label = t("sentiment_crypto")
+        score_txt = str(score)
+        class_txt = t(band)
+        if band in {"extreme_fear", "fear"}:
+            hint = t("sentiment_hint_fear")
+        elif band in {"extreme_greed", "greed"}:
+            hint = t("sentiment_hint_greed")
+        else:
+            hint = t("sentiment_hint_neutral")
+    else:
+        data = fetch_vix_level()
+        if not data:
+            return
+        vix = float(data["score"])
+        band = _vix_band(vix)
+        tone = _sentiment_tone(band)
+        label = t("sentiment_stocks")
+        score_txt = f"{vix:.1f}"
+        class_txt = t(band)
+        if band in {"extreme_fear", "fear"}:
+            hint = t("sentiment_hint_vix_high")
+        elif band in {"extreme_greed", "greed"}:
+            hint = t("sentiment_hint_vix_low")
+        else:
+            hint = t("sentiment_hint_neutral")
+
+    st.markdown(
+        f'<div class="rd-sentiment is-{tone}" role="status">'
+        f'<span class="rd-sentiment-label">{html.escape(label)}</span>'
+        f'<span class="rd-sentiment-score">{html.escape(score_txt)}</span>'
+        f'<span class="rd-sentiment-class">{html.escape(class_txt)}</span>'
+        f'<span class="rd-sentiment-hint">{html.escape(hint)}</span>'
+        f'<span class="rd-sentiment-note">{html.escape(t("sentiment_disclaimer"))}</span>'
+        f"</div>",
         unsafe_allow_html=True,
     )
 
@@ -3145,7 +3613,7 @@ def _render_press_sources_ticker(
     if not sources:
         return
     cat = "crypto" if category == "crypto" else "stocks"
-    label = "Crypto" if cat == "crypto" else "Stocks"
+    label = t("press_crypto") if cat == "crypto" else t("press_stocks")
     chips: list[str] = []
     for name in sources:
         chips.append(
@@ -3154,7 +3622,7 @@ def _render_press_sources_ticker(
         )
     track = "".join(chips + chips)
     st.markdown(
-        f'<div class="rd-press-rail is-{cat}" aria-label="{html.escape(label)} 취합 언론사">'
+        f'<div class="rd-press-rail is-{cat}" aria-label="{html.escape(label)}">'
         f'<div class="rd-press-rail-label">{html.escape(label)}</div>'
         f'<div class="rd-press-rail-viewport">'
         f'<div class="rd-press-rail-track">{track}</div>'
@@ -3586,7 +4054,12 @@ def _linked_or_span(text_html: str, href: str, has_link: bool, css_class: str) -
     return f'<span class="headline-en-only">{text_html}</span>'
 
 
-def _news_card_html(row: dict[str, Any], mode: DisplayMode, _watchlist: list[str]) -> str:
+def _news_card_html(
+    row: dict[str, Any],
+    mode: DisplayMode,
+    _watchlist: list[str],
+    category: Category = "crypto",
+) -> str:
     item = row["item"]
     translated = row["translated"]
     time_str = _format_time(item["published_iso"])
@@ -3594,8 +4067,10 @@ def _news_card_html(row: dict[str, Any], mode: DisplayMode, _watchlist: list[str
     read_href = html.escape(_read_href(article_id), quote=True)
 
     if row["hits"]:
-        en_html = _highlight_html(item.get("title", ""), row["hits"])
-        ko_html = _highlight_html(translated, row["hits"])
+        en_html = _highlight_html(
+            item.get("title", ""), row["hits"], category=category
+        )
+        ko_html = _highlight_html(translated, row["hits"], category=category)
     else:
         en_html = html.escape(item.get("title", ""))
         ko_html = html.escape(translated)
@@ -3678,7 +4153,12 @@ def _format_time(iso: str) -> str:
 
 
 def _feed_sort_label(sort_hot_first: bool) -> str:
-    return "HOT순" if sort_hot_first else "최신순"
+    return t("sort_hot") if sort_hot_first else t("sort_latest")
+
+
+def _feed_sort_is_hot(label: Any) -> bool:
+    raw = str(label or "").strip()
+    return raw in {"HOT순", "HOT", t("sort_hot")}
 
 
 def _sync_sort_settings(settings: dict[str, Any], sort_hot_first: bool) -> None:
@@ -3697,27 +4177,29 @@ def _resolve_feed_sort(settings: dict[str, Any]) -> bool:
     """
     widget_key = "feed_sort"
     label = st.session_state.get(widget_key)
-    # 탭 전환으로 위젯이 잠깐 없어져도, 패널별 구키에서 복구
-    if label not in ("최신순", "HOT순"):
+    if label not in (t("sort_latest"), t("sort_hot"), "최신순", "HOT순", "Latest", "HOT"):
         for legacy_key in ("feed_sort_crypto", "feed_sort_stocks"):
             legacy = st.session_state.get(legacy_key)
-            if legacy in ("최신순", "HOT순"):
+            if legacy in (t("sort_latest"), t("sort_hot"), "최신순", "HOT순", "Latest", "HOT"):
                 label = legacy
                 break
-    if label not in ("최신순", "HOT순"):
-        label = _feed_sort_label(bool(settings.get("sort_hot_first", True)))
-    st.session_state[widget_key] = label
-    _sync_sort_settings(settings, label == "HOT순")
+    if label not in (t("sort_latest"), t("sort_hot"), "최신순", "HOT순", "Latest", "HOT"):
+        sort_hot = bool(settings.get("sort_hot_first", True))
+    else:
+        sort_hot = _feed_sort_is_hot(label)
+    # 언어 전환 시 라디오 라벨도 현재 언어로 맞춤
+    st.session_state[widget_key] = _feed_sort_label(sort_hot)
+    _sync_sort_settings(settings, sort_hot)
     return bool(settings["sort_hot_first"])
 
 
 def _on_feed_sort_change() -> None:
     label = st.session_state.get("feed_sort")
-    if label not in ("최신순", "HOT순"):
+    if label is None:
         return
     settings = st.session_state.get("settings")
     if isinstance(settings, dict):
-        _sync_sort_settings(settings, label == "HOT순")
+        _sync_sort_settings(settings, _feed_sort_is_hot(label))
 
 
 def _resolve_panel_query(panel: str) -> str:
@@ -3731,20 +4213,16 @@ def _resolve_panel_query(panel: str) -> str:
 
 def _render_feed_toolbar(settings: dict[str, Any], *, panel: str) -> None:
     """정렬(공통) · 키워드 필터(패널별)."""
-    options = ["최신순", "HOT순"]
+    options = [t("sort_latest"), t("sort_hot")]
     desired = _feed_sort_label(bool(settings.get("sort_hot_first", True)))
     sort_key = "feed_sort"
     filter_key = f"feed_filter_{panel}"
-    if sort_key not in st.session_state:
-        st.session_state[sort_key] = desired
-    elif st.session_state[sort_key] not in options:
+    if sort_key not in st.session_state or st.session_state.get(sort_key) not in options:
         st.session_state[sort_key] = desired
     if filter_key not in st.session_state:
         st.session_state[filter_key] = ""
 
-    placeholder = (
-        "키워드 · btc, eth…" if panel == "crypto" else "키워드 · nvidia, fed…"
-    )
+    placeholder = t("kw_crypto") if panel == "crypto" else t("kw_stocks")
     c_sort, c_filter = st.columns([1.55, 1], gap="small")
     with c_sort:
         st.radio(
@@ -3897,23 +4375,21 @@ def render_feed_panel_body(
     hot_count = sum(1 for r in rows if r["is_hot"])
     sort_label = _feed_sort_label(sort_hot_first)
     st.markdown(
-        f'<div class="feed-meta">{len(rows)}건'
-        f' · {sort_label}'
-        f' · {hot_count} HOT'
-        f' · {_now_kst().strftime("%H:%M")} KST</div>',
+        f'<div class="feed-meta">'
+        f'{html.escape(t("feed_meta", n=len(rows), sort=sort_label, hot=hot_count, time=_now_kst().strftime("%H:%M")))}'
+        f"</div>",
         unsafe_allow_html=True,
     )
 
     if not rows:
-        st.info(
-            "표시할 속보가 없습니다. "
-            "사이드바에서 소스·매체·키워드를 확인해 주세요."
-        )
+        st.info(t("empty_feed"))
         return
 
     for r in rows:
         _register_article(r, category)
-    cards = "".join(_news_card_html(r, mode, watchlist) for r in rows)
+    cards = "".join(
+        _news_card_html(r, mode, watchlist, category=category) for r in rows
+    )
     st.markdown(cards, unsafe_allow_html=True)
 
 
@@ -4633,13 +5109,20 @@ def _render_hamburger_only() -> None:
 
 def _render_brand_header() -> None:
     """
-    햄버거 + 로고 + 다크/라이트 토글.
+    햄버거 + 로고 + 언어 + 다크/라이트 토글.
     로고는 iframe 밖 링크로 두어 읽기 화면(?view=read)에서도 목록(첫 화면)으로 돌아가게 함.
     텍스트 대신 이미지 로고를 써서 크롬 자동번역이 브랜드명을 깨뜨리지 않게 함.
     """
     theme = _sync_ui_theme_to_settings()
+    settings = st.session_state.get("settings")
+    if not isinstance(settings, dict):
+        settings = {}
+        st.session_state.settings = settings
+    _resolve_ui_lang(settings)
 
-    col_ham, col_brand, col_theme = st.columns([0.55, 8.2, 1.4], gap="small")
+    col_ham, col_brand, col_lang, col_theme = st.columns(
+        [0.55, 7.0, 1.15, 1.4], gap="small"
+    )
     with col_ham:
         _render_hamburger_only()
     with col_brand:
@@ -4650,23 +5133,35 @@ def _render_brand_header() -> None:
         if logo_uri:
             brand_inner = (
                 f'<img class="rd-brand-logo" src="{logo_uri}" '
-                f'alt="라디오 데스크" decoding="async" '
+                f'alt="Radio Desk" decoding="async" '
                 f'draggable="false" />'
             )
         else:
-            brand_inner = "라디오 데스크"
+            brand_inner = "Radio Desk" if _ui_lang() == "en" else "라디오 데스크"
         st.markdown(
             f'<a class="rd-brand-home notranslate" href="?go_list=1" '
-            f'title="목록으로" translate="no">{brand_inner}</a>'
+            f'title="{html.escape(t("back_home"))}" translate="no">{brand_inner}</a>'
             '<div class="rd-brand-sub">Market News Terminal</div>'
-            '<div class="rd-brand-hint">'
-            "해외 원문 속보입니다. 영어면 주소창 오른쪽 <b>번역</b>을 켜 보세요."
-            "</div>",
+            f'<div class="rd-brand-hint">{t("brand_hint")}</div>',
             unsafe_allow_html=True,
         )
+    with col_lang:
+        st.markdown(
+            f'<div class="rd-theme-hint">{html.escape(t("lang_hint"))}</div>',
+            unsafe_allow_html=True,
+        )
+        is_en = st.toggle(
+            "English",
+            key="ui_lang_is_en",
+            help="Browser language/timezone is used once; then you can override.",
+            label_visibility="collapsed",
+        )
+        st.session_state.ui_lang = "en" if is_en else "ko"
+        settings["ui_lang"] = st.session_state.ui_lang
+        st.session_state.settings = settings
     with col_theme:
         st.markdown(
-            '<div class="rd-theme-hint">다크 ↔ 라이트</div>',
+            f'<div class="rd-theme-hint">{html.escape(t("theme_hint"))}</div>',
             unsafe_allow_html=True,
         )
         is_light = st.toggle(
@@ -4828,6 +5323,11 @@ def main() -> None:
     _inject_ga4()
     _inject_web_push_prompt()
 
+    settings = st.session_state.settings
+    if isinstance(settings, dict):
+        _resolve_ui_lang(settings)
+        st.session_state.settings = settings
+
     # 로고(?go_list=1) 클릭 → 쿼리 제거 후 피드 목록(첫 화면)
     if "go_list" in st.query_params:
         st.query_params.clear()
@@ -4940,37 +5440,43 @@ def main() -> None:
         if enabled.get(s, True) and _source_matches_media_region(s, media_region)
     ]
 
-    # 코인 | 주식 탭 (한 카테고리만 전체 폭)
-    tab_key = "home_category_tab"
+    # 코인 | 주식 탭 (내부 키 저장 · 표시만 언어별)
+    tab_key = "home_category_key"
     if tab_key not in st.session_state:
-        st.session_state[tab_key] = _category_label("crypto")
+        legacy = st.session_state.get("home_category_tab")
+        if legacy in ("주식", "Stocks", "stocks"):
+            st.session_state[tab_key] = "stocks"
+        else:
+            st.session_state[tab_key] = "crypto"
     st.markdown('<div class="rd-cat-tabs" aria-hidden="true"></div>', unsafe_allow_html=True)
     st.radio(
         "카테고리",
-        [_category_label("crypto"), _category_label("stocks")],
+        ["crypto", "stocks"],
         horizontal=True,
         key=tab_key,
+        format_func=_category_label,
         label_visibility="collapsed",
     )
-    active_label = st.session_state.get(tab_key, _category_label("crypto"))
-    if active_label == _category_label("stocks"):
-        active_cat: Category = "stocks"
+    active_cat: Category = (
+        "stocks" if st.session_state.get(tab_key) == "stocks" else "crypto"
+    )
+    if active_cat == "stocks":
         active_rows = stock_rows
         active_sources = active_stocks
     else:
-        active_cat = "crypto"
         active_rows = crypto_rows
         active_sources = active_crypto
 
-    # 선택 탭에 맞는 언론사 · 시세 티커
+    # 선택 탭에 맞는 언론사 · 시세 · 시장 심리
     _render_press_sources_ticker(enabled, media_region, active_cat)
     if bool(settings.get("show_ticker", True)):
         _render_market_price_ticker(active_cat)
+    _render_market_sentiment(active_cat)
 
     render_feed_panel_head(
         title=_category_label(active_cat),
         css_class=active_cat,
-        sources_caption=f"{len(active_sources)}개 소스",
+        sources_caption=t("sources_n", n=len(active_sources)),
     )
     render_feed_panel_body(
         rows=active_rows,
@@ -4984,10 +5490,7 @@ def main() -> None:
 
     _render_signals_teaser()
     _render_home_ad("home-top", "Home")
-    st.caption(
-        "라디오 데스크 · 검증 매체 속보 · 코인·주식 한곳에서 · "
-        "공유·제보는 X에서 #라디오데스크"
-    )
+    st.caption(t("footer"))
 
 
 if __name__ == "__main__":
