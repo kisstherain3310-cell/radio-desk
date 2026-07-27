@@ -1304,14 +1304,15 @@ html[data-rd-theme="light"] .rd-sentiment {
   background: rgba(20, 28, 45, 0.03);
 }
 
-/* 종목 RSI 선택 패널 */
-.rd-rsi-panel {
-  margin: 0.15rem 0 0.7rem 0;
-  padding: 0.65rem 0.75rem 0.75rem;
+/* 종목 RSI 선택 패널 — 위젯을 감싸는 미완료 HTML 금지(removeChild 방지) */
+div[data-testid="stVerticalBlock"]:has(> div > .rd-rsi-anchor) {
   border: 1px solid var(--line);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.015);
+  padding: 0.55rem 0.7rem 0.65rem;
+  margin: 0.15rem 0 0.7rem 0;
 }
+.rd-rsi-anchor { display: none; }
 .rd-rsi-title {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.62rem;
@@ -1319,15 +1320,60 @@ html[data-rd-theme="light"] .rd-sentiment {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--faint);
-  margin: 0 0 0.35rem 0;
+  margin: 0 0 0.2rem 0;
 }
 .rd-rsi-note {
   font-size: 0.66rem;
   color: var(--faint);
-  margin-top: 0.35rem;
+  margin-top: 0.25rem;
 }
-html[data-rd-theme="light"] .rd-rsi-panel {
+html[data-rd-theme="light"] div[data-testid="stVerticalBlock"]:has(> div > .rd-rsi-anchor) {
   background: rgba(20, 28, 45, 0.03);
+}
+
+/* 속보·알림 온스크린 토스트 */
+#rd-alert-toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 100000;
+  max-width: min(360px, 92vw);
+  padding: 0.75rem 0.95rem;
+  border-radius: 10px;
+  background: rgba(18, 24, 36, 0.96);
+  border: 1px solid rgba(232, 184, 74, 0.45);
+  color: #f3f5f9;
+  font: 500 0.84rem/1.4 'Noto Sans KR', sans-serif;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition: opacity .3s ease, transform .3s ease;
+}
+#rd-alert-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+#rd-alert-toast .rd-alert-kicker {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #e8b84a;
+  margin-bottom: 0.25rem;
+}
+#rd-alert-toast .rd-alert-item {
+  font-size: 0.8rem;
+  margin: 0.2rem 0;
+  color: #e6e8ee;
+}
+html[data-rd-theme="light"] #rd-alert-toast {
+  background: rgba(255, 255, 255, 0.97);
+  color: #1a2030;
+  border-color: rgba(184, 134, 11, 0.45);
+}
+html[data-rd-theme="light"] #rd-alert-toast .rd-alert-item {
+  color: #1a2030;
 }
 @keyframes rd-ticker-marquee {
   from { transform: translateX(0); }
@@ -1862,9 +1908,10 @@ def _default_settings() -> dict[str, Any]:
         "sources_enabled": {s: True for s in ALL_SOURCES},
         "sources_alert": {s: False for s in ALL_SOURCES},
         "watchlist": ["BTC", "ETH", "ETF", "NVDA"],
-        "alerts_enabled": False,
+        "alerts_enabled": True,
         "alert_on_watchlist": True,
         "alert_on_source": True,
+        "alert_on_breaking": True,
         "result_limit": 40,
         # 목록 정렬 (기본 HOT순). 코인·주식 탭 공통
         "sort_hot_first": True,
@@ -1946,6 +1993,7 @@ def _ensure_source_keys(settings: dict[str, Any]) -> dict[str, Any]:
     settings["ui_theme"] = _normalize_ui_theme(settings.get("ui_theme", "라이트"))
     if settings.get("ui_lang") not in UI_LANG_OPTIONS:
         settings["ui_lang"] = "ko"
+    settings.setdefault("alert_on_breaking", True)
     # 카테고리별 시세 티커 도입 — 이전 기본(OFF)에서 ON으로 한 번 올림
     if not settings.get("_price_ticker_v2"):
         settings["show_ticker"] = True
@@ -3835,9 +3883,10 @@ def _render_asset_rsi_panel(category: Category) -> None:
     if not options:
         return
 
+    # 열린 HTML을 위젯 사이에 끼우지 않음 (Streamlit/React removeChild 오류 방지)
     st.markdown(
-        f'<div class="rd-rsi-panel"><div class="rd-rsi-title">'
-        f'{html.escape(t("rsi_title"))}</div>',
+        '<div class="rd-rsi-anchor" aria-hidden="true"></div>'
+        f'<div class="rd-rsi-title">{html.escape(t("rsi_title"))}</div>',
         unsafe_allow_html=True,
     )
     keys = [o[0] for o in options]
@@ -3889,7 +3938,7 @@ def _render_asset_rsi_panel(category: Category) -> None:
                 unsafe_allow_html=True,
             )
     st.markdown(
-        f'<div class="rd-rsi-note">{html.escape(t("rsi_disclaimer"))}</div></div>',
+        f'<div class="rd-rsi-note">{html.escape(t("rsi_disclaimer"))}</div>',
         unsafe_allow_html=True,
     )
 
@@ -3990,7 +4039,8 @@ def _inject_ga4() -> None:
 
 def _inject_web_push_prompt() -> None:
     """
-    브라우저 알림 허용 유도 + FCM 프론트 뼈대.
+    브라우저 알림 허용 유도 + (선택) FCM 프론트 뼈대.
+    허용 시 앱 안 토스트·Notification으로 속보를 보여 줌.
     Secrets: FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID,
              FIREBASE_MESSAGING_SENDER_ID, FIREBASE_APP_ID, FIREBASE_VAPID_KEY
     """
@@ -4014,6 +4064,19 @@ def _inject_web_push_prompt() -> None:
     )
     cfg_json = json.dumps(cfg)
     has_fcm_js = "true" if has_fcm else "false"
+    banner_msg = (
+        "새 속보가 오면 화면·브라우저 알림으로 알려 드립니다. 알림을 허용해 주세요."
+        if _ui_lang() == "ko"
+        else "Allow notifications to see breaking alerts on screen and in the browser."
+    )
+    ok_label = "허용" if _ui_lang() == "ko" else "Allow"
+    later_label = "나중에" if _ui_lang() == "ko" else "Later"
+    confirm_title = "알림이 켜졌습니다" if _ui_lang() == "ko" else "Alerts enabled"
+    confirm_body = (
+        "새 속보가 들어오면 화면 오른쪽 위에 알림이 뜹니다."
+        if _ui_lang() == "ko"
+        else "New breaking items will appear as toasts at the top-right."
+    )
     components.html(
         f"""
         <script type="module">
@@ -4024,6 +4087,34 @@ def _inject_web_push_prompt() -> None:
 
           const cfg = {cfg_json};
           const hasFcm = {has_fcm_js};
+          const bannerMsg = {json.dumps(banner_msg, ensure_ascii=False)};
+          const okLabel = {json.dumps(ok_label, ensure_ascii=False)};
+          const laterLabel = {json.dumps(later_label, ensure_ascii=False)};
+          const confirmTitle = {json.dumps(confirm_title, ensure_ascii=False)};
+          const confirmBody = {json.dumps(confirm_body, ensure_ascii=False)};
+
+          function showConfirmToast() {{
+            let toast = doc.getElementById('rd-alert-toast');
+            if (!toast) {{
+              toast = doc.createElement('div');
+              toast.id = 'rd-alert-toast';
+              toast.setAttribute('role', 'status');
+              doc.body.appendChild(toast);
+            }}
+            toast.innerHTML =
+              '<div class="rd-alert-kicker">' + confirmTitle + '</div>' +
+              '<div class="rd-alert-item">' + confirmBody + '</div>';
+            toast.classList.add('is-visible');
+            if (window.parent.__rdAlertHideTimer) clearTimeout(window.parent.__rdAlertHideTimer);
+            window.parent.__rdAlertHideTimer = setTimeout(function () {{
+              toast.classList.remove('is-visible');
+            }}, 5000);
+            try {{
+              if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {{
+                new Notification('라디오 데스크 · ' + confirmTitle, {{ body: confirmBody }});
+              }}
+            }} catch (e) {{}}
+          }}
 
           function ensureBanner() {{
             if (doc.getElementById('rd-push-banner')) return;
@@ -4039,18 +4130,21 @@ def _inject_web_push_prompt() -> None:
               'color:#e6e8ee','font:500 0.85rem/1.4 Noto Sans KR,sans-serif',
               'display:flex','gap:0.75rem','align-items:center','box-shadow:0 10px 30px rgba(0,0,0,.4)'
             ].join(';');
-            bar.innerHTML = '<span>속보 알림을 받으려면 브라우저 알림을 허용해 주세요.</span>';
+            const span = doc.createElement('span');
+            span.textContent = bannerMsg;
+            bar.appendChild(span);
             const ok = doc.createElement('button');
-            ok.textContent = '허용';
+            ok.textContent = okLabel;
             ok.style.cssText = 'cursor:pointer;border:0;border-radius:6px;padding:0.35rem 0.7rem;background:#6e9fff;color:#0d0f13;font-weight:700;';
             const no = doc.createElement('button');
-            no.textContent = '나중에';
+            no.textContent = laterLabel;
             no.style.cssText = 'cursor:pointer;border:0;background:transparent;color:#9aa3b2;';
             ok.onclick = async function () {{
               try {{
                 const perm = await Notification.requestPermission();
-                if (perm === 'granted' && hasFcm) {{
-                  await initFcm();
+                if (perm === 'granted') {{
+                  showConfirmToast();
+                  if (hasFcm) await initFcm();
                 }}
               }} catch (e) {{}}
               bar.remove();
@@ -4074,8 +4168,6 @@ def _inject_web_push_prompt() -> None:
                 appId: cfg.appId,
               }});
               const messaging = getMessaging(app);
-              // 서비스워커는 동일 오리진에 /firebase-messaging-sw.js 가 있어야 함
-              // Streamlit Cloud에서는 커스텀 도메인·정적 호스팅과 함께 배치하세요.
               const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js').catch(function(){{ return null; }});
               const token = await getToken(messaging, {{
                 vapidKey: cfg.vapidKey,
@@ -4102,8 +4194,8 @@ def _inject_web_push_prompt() -> None:
         }})();
         </script>
         """,
-        height=1,
-        scrolling=False,
+        height=0,
+        width=0,
     )
 
 
@@ -4131,58 +4223,94 @@ def inject_css() -> None:
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
     theme = _sync_ui_theme_to_settings()
     theme_attr = "light" if theme == "라이트" else "dark"
-    # 부모 document 에 테마 속성 적용 (CSS 변수 전환)
+    # 부모 document 테마·notranslate — 한 iframe에서만, 중복 주입 최소화
     components.html(
         f"""
         <script>
         (function () {{
-          const doc = window.parent.document;
-          doc.documentElement.setAttribute('data-rd-theme', '{theme_attr}');
           try {{
-            window.parent.localStorage.setItem('rd_ui_theme', '{theme_attr}');
+            const doc = window.parent.document;
+            const root = doc.documentElement;
+            if (root.getAttribute('data-rd-theme') !== '{theme_attr}') {{
+              root.setAttribute('data-rd-theme', '{theme_attr}');
+              try {{ window.parent.localStorage.setItem('rd_ui_theme', '{theme_attr}'); }} catch (e) {{}}
+            }}
+            if (root.dataset.rdNoTranslate !== '1') {{
+              root.dataset.rdNoTranslate = '1';
+              [root, doc.body, doc.querySelector('.stApp')].forEach(function (el) {{
+                if (!el) return;
+                el.setAttribute('translate', 'no');
+                el.classList.add('notranslate');
+              }});
+              if (!doc.querySelector('meta[name="google"][content="notranslate"]')) {{
+                const m = doc.createElement('meta');
+                m.setAttribute('name', 'google');
+                m.setAttribute('content', 'notranslate');
+                if (doc.head) doc.head.appendChild(m);
+              }}
+            }}
           }} catch (e) {{}}
         }})();
         </script>
         """,
-        height=1,
-        scrolling=False,
-    )
-    # 브라우저 자동번역이 Streamlit DOM을 깨며 removeChild 오류를 내는 경우 완화
-    st.markdown(
-        """
-        <script>
-        (function () {
-          try {
-            const doc = (window.parent && window.parent !== window)
-              ? window.parent.document : document;
-            [doc.documentElement, doc.body, doc.querySelector(".stApp")].forEach((el) => {
-              if (!el) return;
-              el.setAttribute("translate", "no");
-              el.classList.add("notranslate");
-            });
-            if (!doc.querySelector('meta[name="google"][content="notranslate"]')) {
-              const m = doc.createElement("meta");
-              m.setAttribute("name", "google");
-              m.setAttribute("content", "notranslate");
-              doc.head.appendChild(m);
-            }
-          } catch (e) {}
-        })();
-        </script>
-        """,
-        unsafe_allow_html=True,
+        height=0,
+        width=0,
     )
 
 
-def play_alert_beep(count: int = 1) -> None:
-    """Play a short Web Audio beep in the browser (no asset file needed)."""
+def play_alert_beep(count: int = 1, titles: list[str] | None = None) -> None:
+    """비프 + 화면 토스트(+브라우저 Notification 가능 시)."""
     n = max(1, min(int(count), 3))
+    raw_titles = [str(x).strip() for x in (titles or []) if str(x).strip()][:4]
+    titles_json = json.dumps(raw_titles, ensure_ascii=False)
+    kicker = "속보 알림" if _ui_lang() == "ko" else "Breaking alert"
+    empty_fallback = (
+        "새 속보가 있습니다." if _ui_lang() == "ko" else "New breaking item."
+    )
     components.html(
         f"""
         <script>
         (function() {{
           try {{
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const doc = window.parent.document;
+            const titles = {titles_json};
+            const kicker = {json.dumps(kicker, ensure_ascii=False)};
+
+            // 온스크린 토스트 (앱 화면 안)
+            let toast = doc.getElementById('rd-alert-toast');
+            if (!toast) {{
+              toast = doc.createElement('div');
+              toast.id = 'rd-alert-toast';
+              toast.setAttribute('role', 'status');
+              toast.setAttribute('aria-live', 'polite');
+              doc.body.appendChild(toast);
+            }}
+            const emptyFallback = {json.dumps(empty_fallback, ensure_ascii=False)};
+            const items = (titles.length ? titles : [emptyFallback])
+              .map(function (t) {{
+                return '<div class="rd-alert-item">' + t.replace(/</g,'&lt;') + '</div>';
+              }}).join('');
+            toast.innerHTML = '<div class="rd-alert-kicker">' + kicker + '</div>' + items;
+            toast.classList.add('is-visible');
+            if (window.parent.__rdAlertHideTimer) {{
+              clearTimeout(window.parent.__rdAlertHideTimer);
+            }}
+            window.parent.__rdAlertHideTimer = setTimeout(function () {{
+              toast.classList.remove('is-visible');
+            }}, 6500);
+
+            // 브라우저 Notification (허용된 경우)
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {{
+              const body = (titles.length ? titles : ['새 속보']).slice(0, 2).join(' · ');
+              try {{
+                new Notification('라디오 데스크 · ' + kicker, {{ body: body }});
+              }} catch (e) {{}}
+            }}
+
+            // 비프
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return;
+            const ctx = new Ctx();
             let t = ctx.currentTime;
             for (let i = 0; i < {n}; i++) {{
               const o = ctx.createOscillator();
@@ -4859,7 +4987,7 @@ def _update_seen_and_alerts(
     all_rows: list[dict[str, Any]],
     settings: dict[str, Any],
 ) -> None:
-    """Seed seen set on first load; afterwards mark NEW and fire beeps."""
+    """첫 로드는 seen만 시드. 이후 새 속보·워치·소스 매칭 시 토스트·비프."""
     current_ids = {r["id"] for r in all_rows}
 
     if not st.session_state.seeded_seen:
@@ -4867,9 +4995,8 @@ def _update_seen_and_alerts(
         st.session_state.seeded_seen = True
         return
 
-    # Alerts for newly appeared items
     if settings.get("alerts_enabled"):
-        beep_targets = []
+        alert_rows: list[dict[str, Any]] = []
         for row in all_rows:
             if not row["is_new"]:
                 continue
@@ -4883,14 +5010,21 @@ def _update_seen_and_alerts(
             watch_alert = settings.get("alert_on_watchlist") and (
                 row["is_hot"] or bool(row.get("watch_hits"))
             )
-            if source_alert or watch_alert:
-                beep_targets.append(row["id"])
+            breaking_alert = settings.get("alert_on_breaking", True) and (
+                row.get("is_breaking") or row.get("is_breaking_pinned")
+            )
+            if source_alert or watch_alert or breaking_alert:
+                alert_rows.append(row)
 
-        if beep_targets:
-            play_alert_beep(len(beep_targets))
-            st.session_state.alerted_ids.update(beep_targets)
+        if alert_rows:
+            titles = [
+                str((r.get("item") or {}).get("title") or "").strip()
+                for r in alert_rows
+            ]
+            titles = [x for x in titles if x][:4]
+            play_alert_beep(len(alert_rows), titles=titles)
+            st.session_state.alerted_ids.update(r["id"] for r in alert_rows)
 
-    # Mark everything currently shown as seen for next cycle
     st.session_state.seen_ids.update(current_ids)
 
 
@@ -5265,9 +5399,14 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
     st.markdown('<div class="sidebar-label">알림</div>', unsafe_allow_html=True)
     settings["alerts_enabled"] = st.toggle(
-        "소리 알림 사용",
-        value=settings.get("alerts_enabled", False),
-        help="새 속보가 알림 조건에 맞으면 비프음",
+        "속보 알림 사용",
+        value=settings.get("alerts_enabled", True),
+        help="조건에 맞는 새 기사가 오면 화면 토스트·비프·(허용 시) 브라우저 알림",
+    )
+    settings["alert_on_breaking"] = st.checkbox(
+        "속보 태그 기사 알림",
+        value=settings.get("alert_on_breaking", True),
+        disabled=not settings["alerts_enabled"],
     )
     settings["alert_on_watchlist"] = st.checkbox(
         "워치리스트 매칭 시 알림",
@@ -5281,7 +5420,7 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     )
     if settings["alerts_enabled"]:
         st.markdown(
-            '<div class="sidebar-hint">첫 로드는 알림 없음 · 이후 새 속보만</div>',
+            '<div class="sidebar-hint">첫 로드는 알림 없음 · 이후 새 기사만 · 화면 오른쪽 위 토스트</div>',
             unsafe_allow_html=True,
         )
 
