@@ -455,7 +455,9 @@ HOT_THRESHOLDS: dict[str, dict[str, int]] = {
     "공격적": {"hot_min": 1, "hot_plus_score": 3, "hot_plus_watch": 2},
 }
 
-# 코인 전용 HOT 보조 키워드 (CRYPTO에도 STOCKS와 동일 조건으로 HOT 부여)
+# 코인 전용 HOT 보조 키워드.
+# 하이라이트에는 항상 사용하고, HOT 점수에는 '공격적' 민감도에서만 반영
+# (거의 모든 코인 기사가 코인명을 포함해, 항상 반영하면 전부 HOT이 되어 배지가 무의미해짐)
 CRYPTO_HOT_EXTRA = [
     "Bitcoin",
     "BTC",
@@ -535,8 +537,25 @@ html[data-rd-theme="dark"] {
   --brand-fg: #f3f5f9;
   --panel-card: rgba(255, 255, 255, 0.015);
   --ticker-bg: rgba(126, 200, 168, 0.06);
-  --toast-bg: rgba(18, 24, 36, 0.92);
+  --toast-bg: rgba(16, 22, 34, 0.72);
   --sidebar-bg: #0f1218;
+  /* --- 유리(글래스) 토큰 --- */
+  --glass-bg: rgba(16, 20, 28, 0.55);
+  --glass-bg-strong: rgba(13, 17, 25, 0.72);
+  --glass-bg-faint: rgba(255, 255, 255, 0.045);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-border-strong: rgba(255, 255, 255, 0.2);
+  --glass-inner-light: rgba(255, 255, 255, 0.09);
+  --glass-sheen: linear-gradient(115deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 32%, transparent 55%);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.38);
+  --glass-shadow-soft: 0 3px 14px rgba(0, 0, 0, 0.22);
+  --glass-blur: 18px;
+  --glass-blur-strong: 24px;
+  --glass-saturate: 1.35;
+  --glass-radius: 14px;
+  --glass-radius-sm: 11px;
+  --glass-input-bg: rgba(255, 255, 255, 0.06);
+  --glass-input-bg-focus: rgba(255, 255, 255, 0.1);
 }
 
 html[data-rd-theme="light"] {
@@ -559,31 +578,58 @@ html[data-rd-theme="light"] {
   --brand-fg: #1a2030;
   --panel-card: rgba(255, 255, 255, 0.92);
   --ticker-bg: rgba(31, 138, 100, 0.08);
-  --toast-bg: rgba(255, 255, 255, 0.96);
+  --toast-bg: rgba(255, 255, 255, 0.78);
   --sidebar-bg: #eef1f6;
+  /* --- 유리(글래스) 토큰 · 라이트 = 젖빛 유리 --- */
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.74);
+  --glass-bg-faint: rgba(255, 255, 255, 0.6);
+  --glass-border: rgba(20, 28, 45, 0.12);
+  --glass-border-strong: rgba(20, 28, 45, 0.18);
+  --glass-inner-light: rgba(255, 255, 255, 0.9);
+  --glass-sheen: linear-gradient(115deg, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.15) 32%, transparent 55%);
+  --glass-shadow: 0 8px 32px rgba(30, 42, 74, 0.14);
+  --glass-shadow-soft: 0 3px 14px rgba(30, 42, 74, 0.08);
+  --glass-input-bg: rgba(20, 28, 45, 0.045);
+  --glass-input-bg-focus: rgba(255, 255, 255, 0.9);
 }
 
 html, body, [class*="css"] {
   font-family: 'Noto Sans KR', sans-serif;
 }
 
+/* 오로라 배경 — 유리 표면 뒤에 비칠 컬러 글로우. fixed 의사요소로 스크롤 리페인트 없음.
+   주의: .stApp의 position은 Streamlit 기본(absolute)을 건드리지 않는다 — 바꾸면 높이가 0으로 붕괴 */
 .stApp {
-  background:
-    radial-gradient(1000px 480px at 8% -8%, rgba(110, 159, 255, 0.05), transparent 55%),
-    radial-gradient(900px 420px at 92% 0%, rgba(126, 200, 168, 0.035), transparent 50%),
-    var(--bg);
+  isolation: isolate;
+  background: var(--bg);
   color: var(--text);
 }
-
-html[data-rd-theme="light"] .stApp {
+.stApp::before {
+  content: "";
+  position: fixed;
+  inset: -12% -8%;
+  z-index: -1;
+  pointer-events: none;
   background:
-    radial-gradient(1000px 480px at 8% -8%, rgba(59, 111, 216, 0.06), transparent 55%),
-    radial-gradient(900px 420px at 92% 0%, rgba(31, 138, 100, 0.05), transparent 50%),
-    var(--bg);
+    radial-gradient(52vw 40vh at 12% -6%,  rgba(110, 159, 255, 0.20), transparent 62%),
+    radial-gradient(46vw 36vh at 94% 4%,   rgba(126, 200, 168, 0.16), transparent 58%),
+    radial-gradient(40vw 34vh at 78% 88%,  rgba(232, 184, 74, 0.10),  transparent 60%),
+    radial-gradient(34vw 30vh at 4% 72%,   rgba(154, 168, 216, 0.12), transparent 55%);
+}
+
+html[data-rd-theme="light"] .stApp::before {
+  background:
+    radial-gradient(52vw 40vh at 12% -6%,  rgba(59, 111, 216, 0.16), transparent 62%),
+    radial-gradient(46vw 36vh at 94% 4%,   rgba(31, 138, 100, 0.13), transparent 58%),
+    radial-gradient(40vw 34vh at 78% 88%,  rgba(184, 134, 11, 0.08), transparent 60%),
+    radial-gradient(34vw 30vh at 4% 72%,   rgba(74, 95, 168, 0.10),  transparent 55%);
 }
 
 section[data-testid="stSidebar"] {
   background: var(--sidebar-bg) !important;
+  border-right: 1px solid var(--glass-border);
+  box-shadow: inset -1px 0 0 var(--glass-inner-light), var(--glass-shadow-soft);
 }
 section[data-testid="stSidebar"] * {
   color: var(--text);
@@ -638,15 +684,11 @@ section.stSidebar button:has([data-testid="stIconMaterial"]) {
   margin: 0.15rem 0 0.85rem 0;
   padding: 0.55rem 0.7rem;
   border: 1px solid var(--accent-border);
-  background: rgba(110, 159, 255, 0.08);
-  border-radius: 8px;
+  background: var(--glass-sheen), rgba(110, 159, 255, 0.08);
+  border-radius: var(--glass-radius-sm);
+  box-shadow: inset 0 1px 0 var(--glass-inner-light);
 }
 
-
-section[data-testid="stSidebar"] {
-  background: #0f1218;
-  border-right: 1px solid var(--line);
-}
 
 section[data-testid="stSidebar"] .block-container {
   padding-top: 1.25rem !important;
@@ -674,9 +716,9 @@ section[data-testid="stSidebar"] .stRadio > label { display: none; }
 section[data-testid="stSidebar"] .stRadio [role="radiogroup"] { gap: 0.35rem; }
 
 section[data-testid="stSidebar"] .stRadio [role="radiogroup"] label {
-  background: var(--bg-elevated);
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  background: var(--glass-input-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
   padding: 0.45rem 0.65rem !important;
   margin: 0 !important;
 }
@@ -688,20 +730,20 @@ section[data-testid="stSidebar"] .stRadio [role="radiogroup"] label p {
 
 section[data-testid="stSidebar"] .stTextInput input,
 section[data-testid="stSidebar"] .stTextArea textarea {
-  background: var(--bg-elevated) !important;
+  background: var(--glass-input-bg) !important;
   color: var(--text) !important;
-  border: 1px solid var(--line) !important;
-  border-radius: 6px !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 8px !important;
   font-size: 0.86rem !important;
   font-family: 'Noto Sans KR', sans-serif !important;
 }
 
-/* 메인 키워드 필터 등 — 배경과 비슷하되 입력창으로 구분 */
+/* 메인 키워드 필터 등 — 유리 입력창 (테마 토큰 기반) */
 [data-testid="stAppViewContainer"] .stTextInput input {
-  background: #1a1f28 !important;
+  background: var(--glass-input-bg) !important;
   color: var(--text) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  border-radius: 6px !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 8px !important;
   font-size: 0.8rem !important;
   font-family: 'Noto Sans KR', sans-serif !important;
   caret-color: var(--accent) !important;
@@ -711,7 +753,7 @@ section[data-testid="stSidebar"] .stTextArea textarea {
   opacity: 1 !important;
 }
 [data-testid="stAppViewContainer"] .stTextInput input:focus {
-  background: #1e2430 !important;
+  background: var(--glass-input-bg-focus) !important;
   border-color: var(--accent-border) !important;
   box-shadow: 0 0 0 1px rgba(110, 159, 255, 0.18) !important;
 }
@@ -727,13 +769,7 @@ div[data-testid="stVerticalBlock"]:has(.feed-body-anchor) .stTextInput input {
   line-height: 1.2 !important;
   font-size: 0.78rem !important;
 }
-html[data-rd-theme="light"] [data-testid="stAppViewContainer"] .stTextInput input {
-  background: #f4f6f9 !important;
-  border-color: rgba(20, 28, 45, 0.14) !important;
-}
-html[data-rd-theme="light"] [data-testid="stAppViewContainer"] .stTextInput input:focus {
-  background: #fff !important;
-}
+/* 라이트 입력창은 --glass-input-bg 토큰이 자동 처리 */
 
 section[data-testid="stSidebar"] div[data-testid="stCheckbox"] label p {
   font-size: 0.82rem !important;
@@ -883,13 +919,13 @@ img.rd-brand-logo {
   pointer-events: none;
   padding: 0.55rem 1.15rem;
   border-radius: 999px;
-  background: rgba(18, 24, 36, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #f3f5f9;
+  background: var(--toast-bg);
+  border: 1px solid var(--glass-border-strong);
+  color: var(--text);
   font-size: 0.88rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 1px 0 var(--glass-inner-light), var(--glass-shadow);
   opacity: 0;
   transition: opacity 0.35s ease, transform 0.35s ease;
 }
@@ -916,24 +952,27 @@ img.rd-brand-logo {
   margin: 0 0 0.55rem 0;
 }
 
+/* 뉴스 카드 — 유리 질감 (40장이라 blur 없이 반투명+하이라이트로 처리) */
 .news-item {
-  background: var(--panel-card);
-  border: 1px solid var(--line-soft);
-  border-radius: 6px;
+  background: var(--glass-sheen), var(--glass-bg-faint);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
   padding: 0.48rem 0.65rem 0.52rem 0.65rem;
   margin-bottom: 0.28rem;
+  box-shadow: inset 0 1px 0 var(--glass-inner-light), 0 2px 8px rgba(0, 0, 0, 0.14);
   transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.2s ease;
 }
 
 .news-item:hover {
-  background: var(--bg-hover);
-  border-color: var(--line);
+  background: var(--glass-sheen), var(--bg-hover);
+  border-color: var(--glass-border-strong);
+  box-shadow: inset 0 1px 0 var(--glass-inner-light), var(--glass-shadow-soft);
 }
 
 .news-item.is-new {
   border-color: rgba(110, 159, 255, 0.45);
-  box-shadow: inset 3px 0 0 var(--new);
-  background: rgba(110, 159, 255, 0.07);
+  box-shadow: inset 3px 0 0 var(--new), inset 0 1px 0 var(--glass-inner-light), 0 2px 8px rgba(0, 0, 0, 0.14);
+  background: linear-gradient(160deg, rgba(110, 159, 255, 0.13), rgba(110, 159, 255, 0.04)), var(--glass-bg-faint);
   animation: new-pulse 1.8s ease-out 2;
 }
 
@@ -942,15 +981,15 @@ img.rd-brand-logo {
 }
 
 .news-item.is-watch {
-  border-color: rgba(126, 200, 168, 0.55);
-  box-shadow: inset 3px 0 0 var(--crypto);
-  background: rgba(126, 200, 168, 0.08);
+  border-color: rgba(126, 200, 168, 0.5);
+  box-shadow: inset 3px 0 0 var(--crypto), inset 0 1px 0 var(--glass-inner-light), 0 2px 8px rgba(0, 0, 0, 0.14);
+  background: linear-gradient(160deg, rgba(126, 200, 168, 0.13), rgba(126, 200, 168, 0.04)), var(--glass-bg-faint);
 }
 
 .news-item.is-breaking {
-  background: rgba(220, 70, 70, 0.1);
+  background: linear-gradient(160deg, rgba(220, 70, 70, 0.14), rgba(220, 70, 70, 0.05)), var(--glass-bg-faint);
   border-color: rgba(220, 70, 70, 0.45);
-  box-shadow: inset 3px 0 0 #e05a5a;
+  box-shadow: inset 3px 0 0 #e05a5a, inset 0 1px 0 var(--glass-inner-light), 0 2px 8px rgba(0, 0, 0, 0.14);
 }
 
 .news-item.is-breaking.is-hot {
@@ -958,8 +997,8 @@ img.rd-brand-logo {
 }
 
 @keyframes new-pulse {
-  0% { background: rgba(110, 159, 255, 0.18); }
-  100% { background: rgba(110, 159, 255, 0.07); }
+  0% { background: linear-gradient(160deg, rgba(110, 159, 255, 0.22), rgba(110, 159, 255, 0.09)), var(--glass-bg-faint); }
+  100% { background: linear-gradient(160deg, rgba(110, 159, 255, 0.13), rgba(110, 159, 255, 0.04)), var(--glass-bg-faint); }
 }
 
 .news-flags {
@@ -1017,11 +1056,11 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker) {
   z-index: 40;
   isolation: isolate;
   pointer-events: auto !important;
-  background: rgba(110, 159, 255, 0.1);
-  border: 1.5px solid rgba(110, 159, 255, 0.55) !important;
-  border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent-dim), transparent 60%), var(--glass-bg);
+  border: 1.5px solid var(--accent-border) !important;
+  border-radius: var(--glass-radius);
   margin: 0.35rem 0 0.55rem 0;
-  box-shadow: inset 0 0 0 1px rgba(110, 159, 255, 0.12);
+  box-shadow: inset 0 1px 0 var(--glass-inner-light), var(--glass-shadow-soft);
 }
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker) button,
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker) label,
@@ -1048,9 +1087,10 @@ div[data-testid="stElementContainer"]:has(iframe[height="1"]) {
 .rd-ticker-wrap {
   overflow: hidden;
   margin: 0.35rem 0 0.65rem 0;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--ticker-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  background: var(--glass-sheen), var(--ticker-bg);
+  box-shadow: inset 0 1px 0 var(--glass-inner-light), var(--glass-shadow-soft);
   mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
 }
 .rd-ticker-track {
@@ -1089,6 +1129,10 @@ div[data-testid="stElementContainer"]:has(iframe[height="1"]) {
   min-height: 2.1rem;
   position: relative;
   overflow: hidden;
+  background: var(--glass-bg-faint);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  box-shadow: inset 0 1px 0 var(--glass-inner-light);
 }
 .rd-press-rail::before {
   content: "";
@@ -1100,13 +1144,22 @@ div[data-testid="stElementContainer"]:has(iframe[height="1"]) {
   border-radius: 1px;
   background: var(--muted);
 }
+/* 유리 광택 (::before는 액센트 바가 쓰므로 ::after 사용) */
+.rd-press-rail::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--glass-sheen);
+  pointer-events: none;
+}
 .rd-press-rail.is-crypto {
   background: linear-gradient(
     90deg,
-    rgba(126, 200, 168, 0.1) 0%,
+    rgba(126, 200, 168, 0.12) 0%,
     rgba(126, 200, 168, 0.03) 28%,
     transparent 70%
-  );
+  ), var(--glass-bg-faint);
 }
 .rd-press-rail.is-crypto::before {
   background: var(--crypto);
@@ -1114,10 +1167,10 @@ div[data-testid="stElementContainer"]:has(iframe[height="1"]) {
 .rd-press-rail.is-stocks {
   background: linear-gradient(
     90deg,
-    rgba(154, 168, 216, 0.12) 0%,
+    rgba(154, 168, 216, 0.14) 0%,
     rgba(154, 168, 216, 0.03) 28%,
     transparent 70%
-  );
+  ), var(--glass-bg-faint);
 }
 .rd-press-rail.is-stocks::before {
   background: var(--stocks);
@@ -1217,7 +1270,7 @@ html[data-rd-theme="light"] .rd-press-rail.is-crypto {
     rgba(31, 138, 100, 0.09) 0%,
     rgba(31, 138, 100, 0.025) 28%,
     transparent 70%
-  );
+  ), var(--glass-bg-faint);
 }
 html[data-rd-theme="light"] .rd-press-rail.is-stocks {
   background: linear-gradient(
@@ -1225,7 +1278,7 @@ html[data-rd-theme="light"] .rd-press-rail.is-stocks {
     rgba(74, 95, 168, 0.1) 0%,
     rgba(74, 95, 168, 0.025) 28%,
     transparent 70%
-  );
+  ), var(--glass-bg-faint);
 }
 
 /* 공포·탐욕 / VIX 심리 바 */
@@ -1236,20 +1289,21 @@ html[data-rd-theme="light"] .rd-press-rail.is-stocks {
   gap: 0.55rem 0.85rem;
   margin: 0.05rem 0 0.65rem 0;
   padding: 0.55rem 0.75rem;
-  border-radius: 6px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--glass-radius);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-sheen), var(--glass-bg);
+  box-shadow: inset 0 1px 0 var(--glass-inner-light), var(--glass-shadow-soft);
 }
 .rd-sentiment.is-fear {
   border-color: rgba(224, 122, 122, 0.35);
-  background: linear-gradient(90deg, rgba(224, 122, 122, 0.12), transparent 70%);
+  background: linear-gradient(90deg, rgba(224, 122, 122, 0.14), transparent 70%), var(--glass-sheen), var(--glass-bg);
 }
 .rd-sentiment.is-greed {
   border-color: rgba(126, 200, 168, 0.35);
-  background: linear-gradient(90deg, rgba(126, 200, 168, 0.12), transparent 70%);
+  background: linear-gradient(90deg, rgba(126, 200, 168, 0.14), transparent 70%), var(--glass-sheen), var(--glass-bg);
 }
 .rd-sentiment.is-neutral {
-  border-color: var(--line);
+  border-color: var(--glass-border);
 }
 .rd-sentiment-gauge-wrap {
   flex: 0 0 auto;
@@ -1300,15 +1354,14 @@ html[data-rd-theme="light"] .rd-press-rail.is-stocks {
   font-size: 0.66rem;
   color: var(--faint);
 }
-html[data-rd-theme="light"] .rd-sentiment {
-  background: rgba(20, 28, 45, 0.03);
-}
+/* 라이트 테마 심리 카드 배경은 --glass-bg 토큰이 자동 처리 */
 
 /* 종목 RSI 선택 패널 — 위젯을 감싸는 미완료 HTML 금지(removeChild 방지) */
-div[data-testid="stVerticalBlock"]:has(> div > .rd-rsi-anchor) {
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.015);
+div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .rd-rsi-anchor) {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  background: var(--glass-sheen), var(--glass-bg);
+  box-shadow: inset 0 1px 0 var(--glass-inner-light), var(--glass-shadow-soft);
   padding: 0.55rem 0.7rem 0.65rem;
   margin: 0.15rem 0 0.7rem 0;
 }
@@ -1327,9 +1380,7 @@ div[data-testid="stVerticalBlock"]:has(> div > .rd-rsi-anchor) {
   color: var(--faint);
   margin-top: 0.25rem;
 }
-html[data-rd-theme="light"] div[data-testid="stVerticalBlock"]:has(> div > .rd-rsi-anchor) {
-  background: rgba(20, 28, 45, 0.03);
-}
+/* 라이트 테마 RSI 패널 배경은 --glass-bg 토큰이 자동 처리 */
 
 /* 속보·알림 온스크린 토스트 */
 #rd-alert-toast {
@@ -1339,12 +1390,12 @@ html[data-rd-theme="light"] div[data-testid="stVerticalBlock"]:has(> div > .rd-r
   z-index: 100000;
   max-width: min(360px, 92vw);
   padding: 0.75rem 0.95rem;
-  border-radius: 10px;
-  background: rgba(18, 24, 36, 0.96);
+  border-radius: var(--glass-radius-sm);
+  background: var(--toast-bg);
   border: 1px solid rgba(232, 184, 74, 0.45);
-  color: #f3f5f9;
+  color: var(--text);
   font: 500 0.84rem/1.4 'Noto Sans KR', sans-serif;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px 0 var(--glass-inner-light), var(--glass-shadow);
   opacity: 0;
   transform: translateY(-8px);
   pointer-events: none;
@@ -1365,11 +1416,9 @@ html[data-rd-theme="light"] div[data-testid="stVerticalBlock"]:has(> div > .rd-r
 #rd-alert-toast .rd-alert-item {
   font-size: 0.8rem;
   margin: 0.2rem 0;
-  color: #e6e8ee;
+  color: var(--text);
 }
 html[data-rd-theme="light"] #rd-alert-toast {
-  background: rgba(255, 255, 255, 0.97);
-  color: #1a2030;
   border-color: rgba(184, 134, 11, 0.45);
 }
 html[data-rd-theme="light"] #rd-alert-toast .rd-alert-item {
@@ -1491,16 +1540,17 @@ html[data-rd-theme="light"] mark.hl.hl-stocks {
   color: var(--muted);
   margin: 0 0 0.35rem 0;
   padding: 0.45rem 0.65rem;
-  border: 1px solid var(--line-soft);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  background: var(--glass-sheen), var(--glass-bg-faint);
+  box-shadow: inset 0 1px 0 var(--glass-inner-light);
   line-height: 1.4;
 }
 
 .status-banner.is-warn {
   color: #d4b896;
   border-color: rgba(232, 184, 74, 0.28);
-  background: rgba(232, 184, 74, 0.06);
+  background: linear-gradient(135deg, rgba(232, 184, 74, 0.08), transparent 60%), var(--glass-bg-faint);
 }
 
 .status-banner .status-rss {
@@ -1552,22 +1602,15 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker)
 }
 .signals-teaser {
   border: 1px solid rgba(232, 184, 74, 0.28);
-  background: linear-gradient(
-    135deg,
-    rgba(232, 184, 74, 0.08),
-    rgba(14, 18, 28, 0.4)
-  );
-  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(232, 184, 74, 0.10), transparent 55%), var(--glass-sheen), var(--glass-bg);
+  border-radius: var(--glass-radius);
+  box-shadow: inset 0 1px 0 var(--glass-inner-light), var(--glass-shadow-soft);
   padding: 1rem 1.15rem;
   margin-top: 0.25rem;
 }
 .signals-teaser.is-pro {
   border-color: rgba(110, 159, 255, 0.35);
-  background: linear-gradient(
-    135deg,
-    rgba(110, 159, 255, 0.1),
-    rgba(14, 18, 28, 0.4)
-  );
+  background: linear-gradient(135deg, rgba(110, 159, 255, 0.12), transparent 55%), var(--glass-sheen), var(--glass-bg);
 }
 .signals-kicker {
   font-size: 0.68rem;
@@ -1588,9 +1631,10 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker)
 }
 .ad-slot {
   min-height: 280px;
-  border: 1px dashed rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--glass-border-strong);
+  border-radius: var(--glass-radius);
+  background: var(--glass-sheen), var(--glass-bg-faint);
+  box-shadow: inset 0 1px 0 var(--glass-inner-light);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1605,14 +1649,14 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker)
 }
 .ad-slot .ad-label {
   font-weight: 700;
-  color: #6a7384;
+  color: var(--muted);
   font-size: 0.62rem;
 }
 .ad-slot .ad-note {
   text-transform: none;
   letter-spacing: 0;
   font-size: 0.68rem;
-  color: #4a5160;
+  color: var(--faint);
   line-height: 1.4;
   max-width: 9rem;
 }
@@ -1647,9 +1691,10 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker)
   line-height: 1.45;
   margin: 1rem 0 0 0;
   padding: 0.65rem 0.75rem;
-  border: 1px solid var(--line-soft);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  background: var(--glass-sheen), var(--glass-bg-faint);
+  box-shadow: inset 0 1px 0 var(--glass-inner-light);
 }
 .reader-pill-row {
   display: flex;
@@ -1657,18 +1702,19 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker)
   flex-wrap: wrap;
   margin-bottom: 0.75rem;
 }
-/* 목록으로 등 secondary — 흰/연회색 기본 대신 hover 톤을 기본으로 */
+/* 목록으로 등 secondary — 유리 버튼 (테마 토큰 기반) */
 section.stMain div.stButton > button[kind="secondary"],
 section.stMain div.stButton > button[data-testid="baseButton-secondary"] {
-  background-color: #2a2e36 !important;
-  color: #f3f5f9 !important;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  background: var(--glass-input-bg) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--glass-border-strong) !important;
+  border-radius: 8px !important;
 }
 section.stMain div.stButton > button[kind="secondary"]:hover,
 section.stMain div.stButton > button[data-testid="baseButton-secondary"]:hover {
-  background-color: #363b46 !important;
-  color: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.24) !important;
+  background: var(--glass-input-bg-focus) !important;
+  color: var(--text) !important;
+  border-color: var(--glass-border-strong) !important;
 }
 /* ---- Mobile / phone ---- */
 @media (max-width: 768px) {
@@ -1883,17 +1929,64 @@ html[data-rd-theme="light"] .panel-meta {
   color: var(--faint) !important;
 }
 html[data-rd-theme="light"] .status-banner {
-  background: rgba(59, 111, 216, 0.08);
+  background: linear-gradient(135deg, rgba(59, 111, 216, 0.08), transparent 60%), var(--glass-bg-faint);
   border-color: rgba(59, 111, 216, 0.22);
 }
 html[data-rd-theme="light"] #rd-cat-toast {
   background: var(--toast-bg);
   color: var(--text);
-  border-color: var(--line);
+  border-color: var(--glass-border-strong);
 }
 html[data-rd-theme="light"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker) {
-  background: rgba(59, 111, 216, 0.08);
+  background: linear-gradient(135deg, rgba(59, 111, 216, 0.08), transparent 60%), var(--glass-bg);
   border-color: rgba(59, 111, 216, 0.35) !important;
+}
+
+/* ===================== 유리 블러 (지원 브라우저 전용) =====================
+   진짜 backdrop-filter는 큰 표면에만. 뉴스 카드 40장은 반투명 처리로 충분.
+   미지원 브라우저는 위의 반투명 기본값(≈기존 솔리드 룩)으로 폴백. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  /* 강한 블러 — 싱글턴 오버레이·사이드바 */
+  section[data-testid="stSidebar"],
+  #rd-cat-toast,
+  #rd-alert-toast,
+  [data-baseweb="popover"] [role="listbox"] {
+    -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  }
+  section[data-testid="stSidebar"] {
+    background: var(--glass-bg-strong) !important;
+  }
+
+  /* 표준 블러 — 대형 유리 패널 */
+  .rd-ticker-wrap,
+  .rd-press-rail,
+  .rd-sentiment,
+  div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .rd-rsi-anchor),
+  div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker),
+  .signals-teaser,
+  .ad-slot,
+  .status-banner {
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  }
+
+  /* 모바일: GPU 부담 절감 — 블러 반감, 마퀴 레일·잡요소는 블러 해제
+     (html[data-rd-theme] — 테마 변수 블록과 같은 특이도로 뒤에 와서 이김) */
+  @media (max-width: 768px) {
+    :root,
+    html[data-rd-theme] {
+      --glass-blur: 10px;
+      --glass-blur-strong: 14px;
+    }
+    .rd-ticker-wrap,
+    .rd-press-rail,
+    .status-banner,
+    .ad-slot {
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
 }
 </style>
 """
@@ -1917,7 +2010,7 @@ def _default_settings() -> dict[str, Any]:
         "sort_hot_first": True,
         "sort_hot_first_crypto": True,
         "sort_hot_first_stocks": True,
-        "hot_sensitivity": "공격적",
+        "hot_sensitivity": "균형",
         "media_region": "해외",
         "ui_theme": "라이트",
         "ui_lang": "ko",
@@ -1980,11 +2073,11 @@ def _ensure_source_keys(settings: dict[str, Any]) -> dict[str, Any]:
     settings["sort_hot_first"] = bool(settings["sort_hot_first"])
     settings["sort_hot_first_crypto"] = settings["sort_hot_first"]
     settings["sort_hot_first_stocks"] = settings["sort_hot_first"]
-    sens = settings.get("hot_sensitivity", "공격적")
+    sens = settings.get("hot_sensitivity", "균형")
     if sens not in HOT_SENSITIVITY_OPTIONS:
-        settings["hot_sensitivity"] = "공격적"
+        settings["hot_sensitivity"] = "균형"
     else:
-        settings.setdefault("hot_sensitivity", "공격적")
+        settings.setdefault("hot_sensitivity", "균형")
     region = settings.get("media_region", "해외")
     if region not in MEDIA_REGION_OPTIONS:
         settings["media_region"] = "해외"
@@ -2862,7 +2955,7 @@ def _matched_terms(text: str, terms: list[str]) -> list[str]:
 def _normalize_hot_sensitivity(value: Any) -> str:
     if value in HOT_SENSITIVITY_OPTIONS:
         return str(value)
-    return "공격적"
+    return "균형"
 
 
 def _normalize_media_region(value: Any) -> str:
@@ -2941,7 +3034,7 @@ def _heat_info(
             sensitivity, SIGNAL_KEYWORDS_BY_SENSITIVITY["공격적"]
         )
     )
-    if category == "crypto":
+    if category == "crypto" and sensitivity == "공격적":
         signal_terms = list(dict.fromkeys(signal_terms + CRYPTO_HOT_EXTRA))
     thresholds = HOT_THRESHOLDS.get(sensitivity, HOT_THRESHOLDS["공격적"])
     watch_hits = _matched_terms(text, watchlist)
@@ -3114,18 +3207,19 @@ def _relative_time(iso: str) -> str:
         now = datetime.now(timezone.utc)
         delta = now - dt.astimezone(timezone.utc)
         secs = int(delta.total_seconds())
+        ko = _ui_lang() == "ko"
         if secs < 0:
-            return "just now"
+            return "방금 전" if ko else "just now"
         if secs < 60:
-            return f"{secs}s ago"
+            return f"{secs}초 전" if ko else f"{secs}s ago"
         mins = secs // 60
         if mins < 60:
-            return f"{mins}m ago"
+            return f"{mins}분 전" if ko else f"{mins}m ago"
         hours = mins // 60
         if hours < 48:
-            return f"{hours}h ago"
+            return f"{hours}시간 전" if ko else f"{hours}h ago"
         days = hours // 24
-        return f"{days}d ago"
+        return f"{days}일 전" if ko else f"{days}d ago"
     except ValueError:
         return "—"
 
@@ -3637,10 +3731,24 @@ def _vix_to_gauge_score(vix: float) -> float:
     return 100.0 * (40.0 - v) / 30.0
 
 
-def _sentiment_gauge_svg(score: float, *, needle_color: str = "#e8b84a") -> str:
+# 계기판 구간 경계 (0=공포 ~ 100=탐욕 위치) — 지표마다 실제 기준선이 다름
+_GAUGE_STOPS_FNG: tuple[float, ...] = (0, 24, 44, 56, 75, 100)
+# VIX 30/22/17/13 → _vix_to_gauge_score 로 환산한 위치
+_GAUGE_STOPS_VIX: tuple[float, ...] = (0, 33.3, 60.0, 76.7, 90.0, 100)
+# RSI 20/30/70/80
+_GAUGE_STOPS_RSI: tuple[float, ...] = (0, 20, 30, 70, 80, 100)
+
+
+def _sentiment_gauge_svg(
+    score: float,
+    *,
+    needle_color: str = "#e8b84a",
+    band_stops: tuple[float, ...] = _GAUGE_STOPS_FNG,
+) -> str:
     """
     반원 계기판 + 바늘.
     score 0 = 왼쪽(공포), 100 = 오른쪽(탐욕).
+    band_stops: 구간 경계 5색 (극단적 공포→극단적 탐욕) — 지표별 기준선에 맞춘다.
     """
     import math
 
@@ -3663,12 +3771,12 @@ def _sentiment_gauge_svg(score: float, *, needle_color: str = "#e8b84a") -> str:
         )
 
     # 구간 색: 극단적 공포 → 극단적 탐욕
-    bands = (
-        (0, 24, "#c45c5c"),
-        (24, 44, "#d4894a"),
-        (44, 56, "#c4b45a"),
-        (56, 75, "#6faf7a"),
-        (75, 100, "#3d9a6a"),
+    band_colors = ("#c45c5c", "#d4894a", "#c4b45a", "#6faf7a", "#3d9a6a")
+    stops = list(band_stops)
+    if len(stops) != 6:
+        stops = list(_GAUGE_STOPS_FNG)
+    bands = tuple(
+        (stops[i], stops[i + 1], band_colors[i]) for i in range(5)
     )
     arcs = []
     for a, b, color in bands:
@@ -3684,7 +3792,7 @@ def _sentiment_gauge_svg(score: float, *, needle_color: str = "#e8b84a") -> str:
         x2, y2 = polar(pct, r - 10)
         ticks.append(
             f'<line x1="{x1:.2f}" y1="{y1:.2f}" x2="{x2:.2f}" y2="{y2:.2f}" '
-            f'stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>'
+            f'stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>'
         )
 
     nx, ny = polar(s, r - 18)
@@ -3705,7 +3813,7 @@ def _sentiment_gauge_svg(score: float, *, needle_color: str = "#e8b84a") -> str:
         f'<svg viewBox="0 0 200 110" xmlns="http://www.w3.org/2000/svg" '
         f'aria-hidden="true">'
         f'<path d="{arc_path(0, 100, r + 1)}" fill="none" '
-        f'stroke="rgba(255,255,255,0.08)" stroke-width="16"/>'
+        f'stroke="currentColor" stroke-opacity="0.08" stroke-width="16"/>'
         f'{"".join(arcs)}'
         f'{"".join(ticks)}'
         f"{needle}"
@@ -3726,6 +3834,7 @@ def _render_market_sentiment(category: Category) -> None:
             return
         score = int(data["score"])
         gauge_score = float(score)
+        gauge_stops = _GAUGE_STOPS_FNG
         band = _fng_band(score)
         tone = _sentiment_tone(band)
         label = t("sentiment_crypto")
@@ -3744,6 +3853,7 @@ def _render_market_sentiment(category: Category) -> None:
             return
         vix = float(data["score"])
         gauge_score = _vix_to_gauge_score(vix)
+        gauge_stops = _GAUGE_STOPS_VIX
         band = _vix_band(vix)
         tone = _sentiment_tone(band)
         label = t("sentiment_stocks")
@@ -3757,7 +3867,9 @@ def _render_market_sentiment(category: Category) -> None:
             hint = t("sentiment_hint_neutral")
         needle = "#9aa8d8"
 
-    gauge = _sentiment_gauge_svg(gauge_score, needle_color=needle)
+    gauge = _sentiment_gauge_svg(
+        gauge_score, needle_color=needle, band_stops=gauge_stops
+    )
     st.markdown(
         f'<div class="rd-sentiment is-{tone}" role="status">'
         f'<div class="rd-sentiment-gauge-wrap">{gauge}</div>'
@@ -3804,7 +3916,11 @@ def _rsi_band(rsi: float) -> str:
 
 @st.cache_data(ttl=600, show_spinner=False)
 def fetch_coin_daily_closes(gecko_id: str) -> list[float]:
-    """CoinGecko market_chart · 약 30일 종가."""
+    """CoinGecko market_chart · 일별 종가.
+
+    days=2~90 구간은 시간봉으로 내려오므로, 날짜별 마지막 가격만 남겨
+    일봉으로 다운샘플한다 (RSI 14일 계산용).
+    """
     gid = (gecko_id or "").strip()
     if not gid:
         return []
@@ -3816,8 +3932,17 @@ def fetch_coin_daily_closes(gecko_id: str) -> list[float]:
         )
         resp.raise_for_status()
         prices = (resp.json() or {}).get("prices") or []
-        closes = [float(p[1]) for p in prices if isinstance(p, (list, tuple)) and len(p) >= 2]
-        return closes
+        daily: dict[str, float] = {}
+        for p in prices:
+            if not (isinstance(p, (list, tuple)) and len(p) >= 2):
+                continue
+            day = (
+                datetime.fromtimestamp(float(p[0]) / 1000.0, tz=timezone.utc)
+                .date()
+                .isoformat()
+            )
+            daily[day] = float(p[1])
+        return [daily[d] for d in sorted(daily)]
     except Exception:
         return []
 
@@ -3883,64 +4008,68 @@ def _render_asset_rsi_panel(category: Category) -> None:
     if not options:
         return
 
-    # 열린 HTML을 위젯 사이에 끼우지 않음 (Streamlit/React removeChild 오류 방지)
-    st.markdown(
-        '<div class="rd-rsi-anchor" aria-hidden="true"></div>'
-        f'<div class="rd-rsi-title">{html.escape(t("rsi_title"))}</div>',
-        unsafe_allow_html=True,
-    )
-    keys = [o[0] for o in options]
-    labels = {o[0]: o[1] for o in options}
-    payload = {o[0]: o[2] for o in options}
-    pick_key = f"rsi_asset_pick_{category}"
-    if pick_key not in st.session_state or st.session_state[pick_key] not in keys:
-        st.session_state[pick_key] = keys[0]
-
-    c_pick, c_gauge = st.columns([1.35, 1.65], gap="medium")
-    with c_pick:
-        chosen = st.selectbox(
-            t("rsi_pick"),
-            keys,
-            key=pick_key,
-            format_func=lambda k: labels.get(k, k),
+    # 컨테이너로 감싸 CSS가 유리 패널로 스타일할 앵커(BorderWrapper)를 만든다
+    with st.container():
+        # 열린 HTML을 위젯 사이에 끼우지 않음 (Streamlit/React removeChild 오류 방지)
+        st.markdown(
+            '<div class="rd-rsi-anchor" aria-hidden="true"></div>'
+            f'<div class="rd-rsi-title">{html.escape(t("rsi_title"))}</div>',
+            unsafe_allow_html=True,
         )
-    asset_id = payload.get(chosen, "")
-    if category == "crypto":
-        closes = fetch_coin_daily_closes(asset_id)
-        needle = "#e8b84a"
-    else:
-        closes = fetch_yahoo_daily_closes(asset_id)
-        needle = "#9aa8d8"
+        keys = [o[0] for o in options]
+        labels = {o[0]: o[1] for o in options}
+        payload = {o[0]: o[2] for o in options}
+        pick_key = f"rsi_asset_pick_{category}"
+        if pick_key not in st.session_state or st.session_state[pick_key] not in keys:
+            st.session_state[pick_key] = keys[0]
 
-    rsi = _calc_rsi(closes)
-    with c_gauge:
-        if rsi is None:
-            st.caption(t("rsi_fail"))
-        else:
-            band = _rsi_band(rsi)
-            tone = _sentiment_tone(band)
-            if band in {"extreme_fear", "fear"}:
-                hint = t("rsi_hint_fear")
-            elif band in {"extreme_greed", "greed"}:
-                hint = t("rsi_hint_greed")
-            else:
-                hint = t("rsi_hint_neutral")
-            gauge = _sentiment_gauge_svg(rsi, needle_color=needle)
-            st.markdown(
-                f'<div class="rd-sentiment is-{tone}" style="margin:0;padding:0.35rem 0.5rem;">'
-                f'<div class="rd-sentiment-gauge-wrap">{gauge}</div>'
-                f'<div class="rd-sentiment-copy">'
-                f'<span class="rd-sentiment-score">'
-                f'{html.escape(t("rsi_value", v=rsi))}</span>'
-                f'<span class="rd-sentiment-class">{html.escape(t(band))}</span>'
-                f'<span class="rd-sentiment-hint">{html.escape(hint)}</span>'
-                f"</div></div>",
-                unsafe_allow_html=True,
+        c_pick, c_gauge = st.columns([1.35, 1.65], gap="medium")
+        with c_pick:
+            chosen = st.selectbox(
+                t("rsi_pick"),
+                keys,
+                key=pick_key,
+                format_func=lambda k: labels.get(k, k),
             )
-    st.markdown(
-        f'<div class="rd-rsi-note">{html.escape(t("rsi_disclaimer"))}</div>',
-        unsafe_allow_html=True,
-    )
+        asset_id = payload.get(chosen, "")
+        if category == "crypto":
+            closes = fetch_coin_daily_closes(asset_id)
+            needle = "#e8b84a"
+        else:
+            closes = fetch_yahoo_daily_closes(asset_id)
+            needle = "#9aa8d8"
+
+        rsi = _calc_rsi(closes)
+        with c_gauge:
+            if rsi is None:
+                st.caption(t("rsi_fail"))
+            else:
+                band = _rsi_band(rsi)
+                tone = _sentiment_tone(band)
+                if band in {"extreme_fear", "fear"}:
+                    hint = t("rsi_hint_fear")
+                elif band in {"extreme_greed", "greed"}:
+                    hint = t("rsi_hint_greed")
+                else:
+                    hint = t("rsi_hint_neutral")
+                gauge = _sentiment_gauge_svg(
+                    rsi, needle_color=needle, band_stops=_GAUGE_STOPS_RSI
+                )
+                st.markdown(
+                    f'<div class="rd-sentiment is-{tone}" style="margin:0;padding:0.35rem 0.5rem;">'
+                    f'<div class="rd-sentiment-gauge-wrap">{gauge}</div>'
+                    f'<div class="rd-sentiment-copy">'
+                    f'<span class="rd-sentiment-score">'
+                    f'{html.escape(t("rsi_value", v=rsi))}</span>'
+                    f'<span class="rd-sentiment-class">{html.escape(t(band))}</span>'
+                    f'<span class="rd-sentiment-hint">{html.escape(hint)}</span>'
+                    f"</div></div>",
+                    unsafe_allow_html=True,
+                )
+        st.markdown(
+            f'<div class="rd-rsi-note">{html.escape(t("rsi_disclaimer"))}</div>',
+            unsafe_allow_html=True,
+        )
 
 
 # 하위 호환
@@ -4125,10 +4254,14 @@ def _inject_web_push_prompt() -> None:
             bar.id = 'rd-push-banner';
             bar.style.cssText = [
               'position:fixed','bottom:16px','left:50%','transform:translateX(-50%)',
-              'z-index:99998','max-width:92vw','padding:0.7rem 1rem','border-radius:10px',
-              'background:rgba(18,24,36,0.96)','border:1px solid rgba(110,159,255,0.35)',
-              'color:#e6e8ee','font:500 0.85rem/1.4 Noto Sans KR,sans-serif',
-              'display:flex','gap:0.75rem','align-items:center','box-shadow:0 10px 30px rgba(0,0,0,.4)'
+              'z-index:99998','max-width:92vw','padding:0.7rem 1rem','border-radius:12px',
+              'background:var(--toast-bg, rgba(18,24,36,0.96))',
+              'border:1px solid rgba(110,159,255,0.35)',
+              '-webkit-backdrop-filter:blur(24px) saturate(1.35)',
+              'backdrop-filter:blur(24px) saturate(1.35)',
+              'color:var(--text, #e6e8ee)','font:500 0.85rem/1.4 Noto Sans KR,sans-serif',
+              'display:flex','gap:0.75rem','align-items:center',
+              'box-shadow:inset 0 1px 0 var(--glass-inner-light, rgba(255,255,255,0.09)), 0 10px 30px rgba(0,0,0,.4)'
             ].join(';');
             const span = doc.createElement('span');
             span.textContent = bannerMsg;
@@ -4705,7 +4838,7 @@ def _resolve_hot_sensitivity(settings: dict[str, Any]) -> str:
     key = "hot_sensitivity_radio"
     label = st.session_state.get(key)
     if label not in HOT_SENSITIVITY_OPTIONS:
-        label = _normalize_hot_sensitivity(settings.get("hot_sensitivity", "공격적"))
+        label = _normalize_hot_sensitivity(settings.get("hot_sensitivity", "균형"))
         st.session_state[key] = label
     settings["hot_sensitivity"] = label
     st.session_state.settings = settings
@@ -4750,7 +4883,7 @@ def _render_global_feed_controls(settings: dict[str, Any]) -> None:
     region_key = "media_region_radio"
     if hot_key not in st.session_state:
         st.session_state[hot_key] = _normalize_hot_sensitivity(
-            settings.get("hot_sensitivity", "공격적")
+            settings.get("hot_sensitivity", "균형")
         )
     if region_key not in st.session_state:
         st.session_state[region_key] = _normalize_media_region(
@@ -4921,6 +5054,10 @@ def _derive_exchange_signals_from_news(
     return hits
 
 
+# 시그널 섹션에 보여줄 최대 나이 — 오래된 Fed 공지가 남지 않게
+SIGNALS_MAX_AGE = timedelta(days=7)
+
+
 def fetch_signals_feed() -> list[dict[str, Any]]:
     """한국형 시그널 MVP · 매크로 RSS + 거래소/상장 키워드 파생."""
     _ = _load_x_bearer_token()
@@ -4928,10 +5065,17 @@ def fetch_signals_feed() -> list[dict[str, Any]]:
     exchange = _derive_exchange_signals_from_news(crypto_cached, limit=5)
     macro = fetch_macro_signal_items(limit=5)
     merged = exchange + macro
-    merged.sort(key=lambda x: x.get("published_iso") or "", reverse=True)
+    now = datetime.now(timezone.utc)
+    fresh: list[dict[str, Any]] = []
+    for s in merged:
+        pub = _parse_published_dt(str(s.get("published_iso") or ""))
+        if pub is not None and now - pub > SIGNALS_MAX_AGE:
+            continue
+        fresh.append(s)
+    fresh.sort(key=lambda x: x.get("published_iso") or "", reverse=True)
     seen: set[str] = set()
     uniq: list[dict[str, Any]] = []
-    for s in merged:
+    for s in fresh:
         key = re.sub(r"\s+", " ", (s.get("title") or "").strip().lower())
         if not key or key in seen:
             continue
@@ -5205,7 +5349,7 @@ def _render_auth_sidebar() -> None:
             st.caption(f"로그인 오류: {err}")
 
 
-def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
+def render_sidebar() -> tuple[DisplayMode, dict[str, Any]]:
     settings = st.session_state.settings
 
     # 0) 계정 / Google 로그인
@@ -5323,7 +5467,7 @@ def render_sidebar() -> tuple[str, DisplayMode, dict[str, Any]]:
     st.markdown(
         '<div class="sidebar-hint">'
         "HOT 점수 = 워치×2 + 시그널 · 단어 단위 매칭 (ETH≠ETF). "
-        "민감도(보수적·균형·공격적)는 메인 화면에서 바꿀 수 있습니다."
+        "민감도(보수적·균형·공격적)는 위 「공통 필터」에서 바꿀 수 있습니다."
         "</div>",
         unsafe_allow_html=True,
     )
@@ -5666,9 +5810,13 @@ def _render_category_scroll_toast() -> None:
               '#rd-cat-toast{position:fixed;top:14px;left:50%;',
               'transform:translateX(-50%) translateY(-8px);z-index:99999;',
               'pointer-events:none;padding:0.55rem 1.15rem;border-radius:999px;',
-              'background:rgba(18,24,36,0.92);border:1px solid rgba(255,255,255,0.14);',
-              'color:#f3f5f9;font-size:0.88rem;font-weight:700;letter-spacing:0.02em;',
-              'box-shadow:0 8px 28px rgba(0,0,0,0.35);opacity:0;',
+              'background:var(--toast-bg, rgba(18,24,36,0.92));',
+              'border:1px solid var(--glass-border-strong, rgba(255,255,255,0.2));',
+              'color:var(--text, #f3f5f9);font-size:0.88rem;font-weight:700;letter-spacing:0.02em;',
+              'box-shadow:inset 0 1px 0 var(--glass-inner-light, rgba(255,255,255,0.09)),',
+              'var(--glass-shadow, 0 8px 32px rgba(0,0,0,0.38));',
+              '-webkit-backdrop-filter:blur(24px) saturate(1.35);',
+              'backdrop-filter:blur(24px) saturate(1.35);opacity:0;',
               'transition:opacity .35s ease,transform .35s ease;}',
               '#rd-cat-toast.is-visible{opacity:1;transform:translateX(-50%) translateY(0);}'
             ].join('');
