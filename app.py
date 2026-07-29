@@ -537,25 +537,26 @@ html[data-rd-theme="dark"] {
   --brand-fg: #f3f5f9;
   --panel-card: rgba(255, 255, 255, 0.015);
   --ticker-bg: rgba(126, 200, 168, 0.06);
-  --toast-bg: rgba(16, 22, 34, 0.72);
+  --toast-bg: rgba(16, 22, 34, 0.58);
   --sidebar-bg: #0f1218;
-  /* --- 유리(글래스) 토큰 --- */
-  --glass-bg: rgba(16, 20, 28, 0.55);
-  --glass-bg-strong: rgba(13, 17, 25, 0.72);
-  --glass-bg-faint: rgba(255, 255, 255, 0.045);
-  --glass-border: rgba(255, 255, 255, 0.12);
-  --glass-border-strong: rgba(255, 255, 255, 0.2);
-  --glass-inner-light: rgba(255, 255, 255, 0.09);
-  --glass-sheen: linear-gradient(115deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 32%, transparent 55%);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.38);
-  --glass-shadow-soft: 0 3px 14px rgba(0, 0, 0, 0.22);
-  --glass-blur: 18px;
-  --glass-blur-strong: 24px;
-  --glass-saturate: 1.35;
-  --glass-radius: 14px;
-  --glass-radius-sm: 11px;
-  --glass-input-bg: rgba(255, 255, 255, 0.06);
-  --glass-input-bg-focus: rgba(255, 255, 255, 0.1);
+  /* --- 유리(글래스) 토큰 · iOS 재질 느낌 — 깊은 블러 + 높은 채도 + 투명한 바탕 --- */
+  --glass-bg: rgba(28, 28, 34, 0.3);
+  --glass-bg-strong: rgba(24, 24, 30, 0.48);
+  --glass-bg-faint: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-border-strong: rgba(255, 255, 255, 0.22);
+  --glass-inner-light: rgba(255, 255, 255, 0.18);
+  --glass-sheen: linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.02) 40%, transparent 70%);
+  --glass-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  --glass-shadow-soft: 0 6px 20px rgba(0, 0, 0, 0.22);
+  --glass-blur: 28px;
+  --glass-blur-strong: 40px;
+  --glass-saturate: 1.8;
+  --glass-radius: 20px;
+  --glass-radius-sm: 16px;
+  --glass-input-bg: rgba(255, 255, 255, 0.07);
+  --glass-input-bg-focus: rgba(255, 255, 255, 0.11);
+  --glass-sweep: rgba(255, 255, 255, 0.16);
 }
 
 html[data-rd-theme="light"] {
@@ -578,20 +579,21 @@ html[data-rd-theme="light"] {
   --brand-fg: #1a2030;
   --panel-card: rgba(255, 255, 255, 0.92);
   --ticker-bg: rgba(31, 138, 100, 0.08);
-  --toast-bg: rgba(255, 255, 255, 0.78);
+  --toast-bg: rgba(255, 255, 255, 0.68);
   --sidebar-bg: #eef1f6;
-  /* --- 유리(글래스) 토큰 · 라이트 = 젖빛 유리 --- */
-  --glass-bg: rgba(255, 255, 255, 0.55);
-  --glass-bg-strong: rgba(255, 255, 255, 0.74);
-  --glass-bg-faint: rgba(255, 255, 255, 0.6);
-  --glass-border: rgba(20, 28, 45, 0.12);
-  --glass-border-strong: rgba(20, 28, 45, 0.18);
-  --glass-inner-light: rgba(255, 255, 255, 0.9);
-  --glass-sheen: linear-gradient(115deg, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.15) 32%, transparent 55%);
-  --glass-shadow: 0 8px 32px rgba(30, 42, 74, 0.14);
-  --glass-shadow-soft: 0 3px 14px rgba(30, 42, 74, 0.08);
-  --glass-input-bg: rgba(20, 28, 45, 0.045);
-  --glass-input-bg-focus: rgba(255, 255, 255, 0.9);
+  /* --- 유리(글래스) 토큰 · 라이트 = iOS 밝은 재질 (얇은 젖빛 + 선명한 비침) --- */
+  --glass-bg: rgba(250, 250, 252, 0.38);
+  --glass-bg-strong: rgba(250, 250, 252, 0.55);
+  --glass-bg-faint: rgba(255, 255, 255, 0.4);
+  --glass-border: rgba(60, 60, 67, 0.12);
+  --glass-border-strong: rgba(60, 60, 67, 0.18);
+  --glass-inner-light: rgba(255, 255, 255, 0.95);
+  --glass-sheen: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.12) 40%, transparent 70%);
+  --glass-shadow: 0 16px 40px rgba(31, 41, 66, 0.12);
+  --glass-shadow-soft: 0 6px 20px rgba(31, 41, 66, 0.07);
+  --glass-input-bg: rgba(60, 60, 67, 0.05);
+  --glass-input-bg-focus: rgba(255, 255, 255, 0.92);
+  --glass-sweep: rgba(255, 255, 255, 0.6);
 }
 
 html, body, [class*="css"] {
@@ -718,7 +720,7 @@ section[data-testid="stSidebar"] .stRadio [role="radiogroup"] { gap: 0.35rem; }
 section[data-testid="stSidebar"] .stRadio [role="radiogroup"] label {
   background: var(--glass-input-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 0.45rem 0.65rem !important;
   margin: 0 !important;
 }
@@ -733,7 +735,7 @@ section[data-testid="stSidebar"] .stTextArea textarea {
   background: var(--glass-input-bg) !important;
   color: var(--text) !important;
   border: 1px solid var(--glass-border) !important;
-  border-radius: 8px !important;
+  border-radius: 10px !important;
   font-size: 0.86rem !important;
   font-family: 'Noto Sans KR', sans-serif !important;
 }
@@ -743,7 +745,7 @@ section[data-testid="stSidebar"] .stTextArea textarea {
   background: var(--glass-input-bg) !important;
   color: var(--text) !important;
   border: 1px solid var(--glass-border) !important;
-  border-radius: 8px !important;
+  border-radius: 10px !important;
   font-size: 0.8rem !important;
   font-family: 'Noto Sans KR', sans-serif !important;
   caret-color: var(--accent) !important;
@@ -954,26 +956,57 @@ img.rd-brand-logo {
 
 /* 뉴스 카드 — 유리 질감 (40장이라 blur 없이 반투명+하이라이트로 처리) */
 .news-item {
+  position: relative;
+  overflow: hidden;
   background: var(--glass-sheen), var(--glass-bg-faint);
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius-sm);
   padding: 0.48rem 0.65rem 0.52rem 0.65rem;
   margin-bottom: 0.28rem;
   box-shadow: inset 0 1px 0 var(--glass-inner-light), 0 2px 8px rgba(0, 0, 0, 0.14);
-  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.2s ease;
+  transition: background 0.15s ease, border-color 0.15s ease,
+              box-shadow 0.25s ease, transform 0.18s ease;
+}
+
+/* 호버 시 유리 위를 스치는 빛줄기 */
+.news-item::after {
+  content: "";
+  position: absolute;
+  top: -10%;
+  bottom: -10%;
+  left: -60%;
+  width: 45%;
+  background: linear-gradient(105deg, transparent 0%, var(--glass-sweep) 50%, transparent 100%);
+  transform: skewX(-18deg);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .news-item:hover {
   background: var(--glass-sheen), var(--bg-hover);
   border-color: var(--glass-border-strong);
+  transform: translateY(-2px);
   box-shadow: inset 0 1px 0 var(--glass-inner-light), var(--glass-shadow-soft);
+}
+.news-item:hover::after {
+  animation: rd-glass-sweep 0.7s ease forwards;
+}
+@keyframes rd-glass-sweep {
+  0% { left: -60%; opacity: 0; }
+  25% { opacity: 1; }
+  100% { left: 115%; opacity: 0; }
 }
 
 .news-item.is-new {
   border-color: rgba(110, 159, 255, 0.45);
   box-shadow: inset 3px 0 0 var(--new), inset 0 1px 0 var(--glass-inner-light), 0 2px 8px rgba(0, 0, 0, 0.14);
   background: linear-gradient(160deg, rgba(110, 159, 255, 0.13), rgba(110, 159, 255, 0.04)), var(--glass-bg-faint);
-  animation: new-pulse 1.8s ease-out 2;
+  animation: rd-card-in 0.45s cubic-bezier(0.2, 0.8, 0.3, 1), new-pulse 1.8s ease-out 2;
+}
+
+@keyframes rd-card-in {
+  from { opacity: 0; transform: translateX(-14px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .news-item.is-hot {
@@ -990,6 +1023,7 @@ img.rd-brand-logo {
   background: linear-gradient(160deg, rgba(220, 70, 70, 0.14), rgba(220, 70, 70, 0.05)), var(--glass-bg-faint);
   border-color: rgba(220, 70, 70, 0.45);
   box-shadow: inset 3px 0 0 #e05a5a, inset 0 1px 0 var(--glass-inner-light), 0 2px 8px rgba(0, 0, 0, 0.14);
+  animation: rd-card-in 0.45s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
 .news-item.is-breaking.is-hot {
@@ -1022,8 +1056,8 @@ img.rd-brand-logo {
   font-size: 0.58rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  padding: 0.06rem 0.32rem;
-  border-radius: 3px;
+  padding: 0.08rem 0.45rem;
+  border-radius: 999px;
   line-height: 1.3;
 }
 
@@ -1364,6 +1398,18 @@ div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .
   box-shadow: inset 0 1px 0 var(--glass-inner-light), var(--glass-shadow-soft);
   padding: 0.55rem 0.7rem 0.65rem;
   margin: 0.15rem 0 0.7rem 0;
+  gap: 0.45rem;
+}
+/* 내부 요소가 flex 압축으로 찌그러져 안내문이 테두리 밖으로 넘치는 것 방지 */
+div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .rd-rsi-anchor) > div {
+  flex-shrink: 0;
+  height: auto !important;
+}
+/* Streamlit이 마크다운에 넣는 margin-bottom:-16px 보정 — 커스텀 div는 높이가 잘려
+   마지막 안내문이 패널 테두리와 겹치므로 패널 안에서는 무효화 */
+div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .rd-rsi-anchor)
+  [data-testid="stMarkdownContainer"] {
+  margin-bottom: 0 !important;
 }
 .rd-rsi-anchor { display: none; }
 .rd-rsi-title {
@@ -1708,7 +1754,7 @@ section.stMain div.stButton > button[data-testid="baseButton-secondary"] {
   background: var(--glass-input-bg) !important;
   color: var(--text) !important;
   border: 1px solid var(--glass-border-strong) !important;
-  border-radius: 8px !important;
+  border-radius: 12px !important;
 }
 section.stMain div.stButton > button[kind="secondary"]:hover,
 section.stMain div.stButton > button[data-testid="baseButton-secondary"]:hover {
@@ -1901,8 +1947,8 @@ section.stMain div.stButton > button[data-testid="baseButton-secondary"]:hover {
   letter-spacing: 0.04em;
   color: var(--hot);
   border: 1px solid rgba(232, 184, 74, 0.35);
-  border-radius: 3px;
-  padding: 0.05rem 0.28rem;
+  border-radius: 999px;
+  padding: 0.06rem 0.42rem;
 }
 .signals-meta {
   font-size: 0.68rem;
@@ -1940,6 +1986,95 @@ html[data-rd-theme="light"] #rd-cat-toast {
 html[data-rd-theme="light"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.global-feed-kicker) {
   background: linear-gradient(135deg, rgba(59, 111, 216, 0.08), transparent 60%), var(--glass-bg);
   border-color: rgba(59, 111, 216, 0.35) !important;
+}
+
+/* ===================== 다이내믹 — 계기판 바늘 스윕 + 마우스 스포트라이트 ===================== */
+/* 계기판 바늘 — 로드 시 공포 끝에서 현재 값까지 회전 */
+.rd-gauge-needle {
+  transform-box: view-box;
+  transform-origin: 100px 92px;
+  animation: rd-needle-sweep 0.9s cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+@keyframes rd-needle-sweep {
+  from { transform: rotate(var(--rd-sweep, -90deg)); }
+  to { transform: rotate(0deg); }
+}
+
+/* 커서를 따라다니는 유리 위 광원 (JS가 --rd-mx/--rd-my 갱신) */
+#rd-spotlight {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9990;
+  background: radial-gradient(
+    480px circle at var(--rd-mx, -30%) var(--rd-my, -30%),
+    rgba(255, 255, 255, 0.08), transparent 65%
+  );
+  mix-blend-mode: soft-light;
+}
+html[data-rd-theme="light"] #rd-spotlight {
+  background: radial-gradient(
+    480px circle at var(--rd-mx, -30%) var(--rd-my, -30%),
+    rgba(110, 150, 255, 0.09), transparent 65%
+  );
+  mix-blend-mode: normal;
+}
+
+/* ===================== 호버 다이내믹 — 유리가 살아있는 느낌 ===================== */
+.rd-sentiment,
+div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .rd-rsi-anchor),
+.signals-teaser,
+.status-banner,
+.rd-ticker-wrap {
+  transition: transform 0.18s ease, box-shadow 0.25s ease, border-color 0.2s ease;
+}
+.rd-sentiment:hover,
+div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .rd-rsi-anchor):hover,
+.signals-teaser:hover {
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 var(--glass-inner-light), var(--glass-shadow);
+  border-color: var(--glass-border-strong);
+}
+.rd-ticker-wrap:hover {
+  border-color: var(--glass-border-strong);
+}
+
+/* 버튼·입력도 살짝 반응 */
+section.stMain div.stButton > button,
+section.stMain [data-testid="stLinkButton"] a,
+section[data-testid="stSidebar"] .stButton > button {
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.15s ease !important;
+}
+section.stMain div.stButton > button:hover,
+section.stMain [data-testid="stLinkButton"] a:hover,
+section[data-testid="stSidebar"] .stButton > button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--glass-shadow-soft);
+}
+section.stMain div.stButton > button:active,
+section[data-testid="stSidebar"] .stButton > button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* 모션 최소화 설정 사용자는 정적으로 */
+@media (prefers-reduced-motion: reduce) {
+  .news-item, .rd-sentiment, .signals-teaser, .status-banner,
+  section.stMain div.stButton > button,
+  section[data-testid="stSidebar"] .stButton > button {
+    transition: none !important;
+  }
+  .news-item:hover, .rd-sentiment:hover, .signals-teaser:hover {
+    transform: none;
+  }
+  .news-item:hover::after,
+  .news-item.is-new,
+  .news-item.is-breaking,
+  .rd-gauge-needle {
+    animation: none !important;
+  }
+  #rd-spotlight {
+    display: none;
+  }
 }
 
 /* ===================== 유리 블러 (지원 브라우저 전용) =====================
@@ -3799,12 +3934,16 @@ def _sentiment_gauge_svg(
     # 바늘 받침 삼각형 느낌: 중심 → 끝
     bx1, by1 = polar(max(0, s - 1.8), 8)
     bx2, by2 = polar(min(100, s + 1.8), 8)
+    # 로드 시 왼쪽(공포 끝)에서 현재 값까지 스윕 — CSS 애니메이션이 var를 읽음
+    sweep_deg = (s / 100.0) * 180.0
     needle = (
+        f'<g class="rd-gauge-needle" style="--rd-sweep:-{sweep_deg:.1f}deg">'
         f'<polygon points="{nx:.2f},{ny:.2f} {bx1:.2f},{by1:.2f} {bx2:.2f},{by2:.2f}" '
         f'fill="{needle_color}" stroke="#1a1f28" stroke-width="0.6"/>'
         f'<circle cx="{cx}" cy="{cy}" r="5.5" fill="{needle_color}" '
         f'stroke="#1a1f28" stroke-width="1.2"/>'
         f'<circle cx="{cx}" cy="{cy}" r="2.2" fill="#1a1f28"/>'
+        f"</g>"
     )
 
     fear_lbl = html.escape(t("fear"))
@@ -4257,8 +4396,8 @@ def _inject_web_push_prompt() -> None:
               'z-index:99998','max-width:92vw','padding:0.7rem 1rem','border-radius:12px',
               'background:var(--toast-bg, rgba(18,24,36,0.96))',
               'border:1px solid rgba(110,159,255,0.35)',
-              '-webkit-backdrop-filter:blur(24px) saturate(1.35)',
-              'backdrop-filter:blur(24px) saturate(1.35)',
+              '-webkit-backdrop-filter:blur(var(--glass-blur-strong, 40px)) saturate(var(--glass-saturate, 1.8))',
+              'backdrop-filter:blur(var(--glass-blur-strong, 40px)) saturate(var(--glass-saturate, 1.8))',
               'color:var(--text, #e6e8ee)','font:500 0.85rem/1.4 Noto Sans KR,sans-serif',
               'display:flex','gap:0.75rem','align-items:center',
               'box-shadow:inset 0 1px 0 var(--glass-inner-light, rgba(255,255,255,0.09)), 0 10px 30px rgba(0,0,0,.4)'
@@ -4381,6 +4520,30 @@ def inject_css() -> None:
                 m.setAttribute('content', 'notranslate');
                 if (doc.head) doc.head.appendChild(m);
               }}
+            }}
+            // 커서 스포트라이트 — 유리 위를 따라다니는 광원 (1회 바인딩)
+            if (root.dataset.rdSpotlight !== '1') {{
+              root.dataset.rdSpotlight = '1';
+              let sp = doc.getElementById('rd-spotlight');
+              if (!sp) {{
+                sp = doc.createElement('div');
+                sp.id = 'rd-spotlight';
+                sp.setAttribute('aria-hidden', 'true');
+                doc.body.appendChild(sp);
+              }}
+              let mx = 0, my = 0, pending = false;
+              doc.addEventListener('mousemove', function (e) {{
+                mx = e.clientX;
+                my = e.clientY;
+                if (!pending) {{
+                  pending = true;
+                  window.parent.requestAnimationFrame(function () {{
+                    sp.style.setProperty('--rd-mx', mx + 'px');
+                    sp.style.setProperty('--rd-my', my + 'px');
+                    pending = false;
+                  }});
+                }}
+              }}, {{ passive: true }});
             }}
           }} catch (e) {{}}
         }})();
@@ -5815,8 +5978,8 @@ def _render_category_scroll_toast() -> None:
               'color:var(--text, #f3f5f9);font-size:0.88rem;font-weight:700;letter-spacing:0.02em;',
               'box-shadow:inset 0 1px 0 var(--glass-inner-light, rgba(255,255,255,0.09)),',
               'var(--glass-shadow, 0 8px 32px rgba(0,0,0,0.38));',
-              '-webkit-backdrop-filter:blur(24px) saturate(1.35);',
-              'backdrop-filter:blur(24px) saturate(1.35);opacity:0;',
+              '-webkit-backdrop-filter:blur(var(--glass-blur-strong, 40px)) saturate(var(--glass-saturate, 1.8));',
+              'backdrop-filter:blur(var(--glass-blur-strong, 40px)) saturate(var(--glass-saturate, 1.8));opacity:0;',
               'transition:opacity .35s ease,transform .35s ease;}',
               '#rd-cat-toast.is-visible{opacity:1;transform:translateX(-50%) translateY(0);}'
             ].join('');
