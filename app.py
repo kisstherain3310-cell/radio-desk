@@ -1988,6 +1988,73 @@ html[data-rd-theme="light"] div[data-testid="stVerticalBlockBorderWrapper"]:has(
   border-color: rgba(59, 111, 216, 0.35) !important;
 }
 
+/* ===================== 위젯 색 고정 =====================
+   Streamlit은 방문자 브라우저의 다크/라이트 설정에 따라 위젯 글자·배경색을
+   스스로 정한다. 그대로 두면 브라우저가 다크일 때 흰 글자를 써서 앱 라이트
+   테마에서 라디오 라벨(코인/주식, 최신순/HOT순)이 보이지 않는다.
+   아래 규칙으로 위젯 색을 항상 앱 테마 토큰에 맞춘다. */
+.stApp [data-testid="stWidgetLabel"] p,
+.stApp [data-testid="stWidgetLabel"] label,
+.stApp [data-testid="stCaptionContainer"],
+.stApp [data-testid="stCaptionContainer"] p {
+  color: var(--text-soft) !important;
+}
+.stApp div[role="radiogroup"] label p,
+.stApp div[data-testid="stCheckbox"] label p,
+.stApp [data-baseweb="select"] {
+  color: var(--text) !important;
+}
+
+/* 라디오·체크박스 동그라미 — 다크 기본값의 검은 원 방지.
+   선택된 상태는 primaryColor 표시를 유지해야 하므로 건드리지 않는다. */
+.stApp label[data-baseweb="radio"]:not(:has(input:checked)) > div:first-child,
+.stApp label[data-baseweb="checkbox"]:not(:has(input:checked)) > div:first-child {
+  background-color: var(--glass-input-bg) !important;
+  border-color: var(--glass-border-strong) !important;
+}
+
+/* 입력창 래퍼 — 배경색은 input이 아니라 BaseWeb 래퍼가 칠한다 */
+.stApp [data-baseweb="input"],
+.stApp [data-baseweb="base-input"],
+.stApp [data-baseweb="textarea"] {
+  background-color: var(--glass-input-bg) !important;
+  border-color: var(--glass-border) !important;
+  border-radius: 10px !important;
+}
+.stApp [data-baseweb="input"] input,
+.stApp [data-baseweb="textarea"] textarea {
+  background-color: transparent !important;
+  color: var(--text) !important;
+}
+
+/* 셀렉트박스 (RSI 종목 선택 · 결과 수) */
+.stApp [data-baseweb="select"] > div {
+  background-color: var(--glass-input-bg) !important;
+  border-color: var(--glass-border) !important;
+  border-radius: 10px !important;
+  color: var(--text) !important;
+}
+.stApp [data-baseweb="select"] > div > div,
+.stApp [data-baseweb="select"] span {
+  color: var(--text) !important;
+}
+.stApp [data-baseweb="select"] svg {
+  fill: var(--muted) !important;
+}
+
+/* 셀렉트박스 드롭다운 — body 포털이라 .stApp 밖에 렌더된다 */
+[data-baseweb="popover"] [role="listbox"],
+[data-baseweb="popover"] ul[role="listbox"] {
+  background-color: var(--bg-elevated) !important;
+  border: 1px solid var(--glass-border) !important;
+}
+[data-baseweb="popover"] li[role="option"] {
+  color: var(--text) !important;
+}
+[data-baseweb="popover"] li[role="option"]:hover {
+  background-color: var(--bg-hover) !important;
+}
+
 /* ===================== 다이내믹 — 계기판 바늘 스윕 + 마우스 스포트라이트 ===================== */
 /* 계기판 바늘 — 로드 시 공포 끝에서 현재 값까지 회전 */
 .rd-gauge-needle {

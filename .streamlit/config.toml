@@ -1,0 +1,10 @@
+# Streamlit 기본 테마를 라이트로 고정한다.
+# 고정하지 않으면 방문자 브라우저가 다크 모드일 때 Streamlit이 위젯 글자를
+# 흰색으로 칠해, 앱 라이트 테마에서 라디오 라벨이 보이지 않는다.
+# 앱의 다크 모드는 app.py CSS(html[data-rd-theme])가 담당한다.
+[theme]
+base = "light"
+primaryColor = "#3b6fd8"
+backgroundColor = "#f4f6fa"
+secondaryBackgroundColor = "#eef1f6"
+textColor = "#1a2030"
