@@ -600,7 +600,7 @@ html, body, [class*="css"] {
   font-family: 'Noto Sans KR', sans-serif;
 }
 
-/* 오로라 배경 — 유리 표면 뒤에 비칠 컬러 글로우. fixed 의사요소로 스크롤 리페인트 없음.
+/* 오로라 배경 — 천천히 드리프트. 탭(data-rd-cat)에 따라 톤 전환.
    주의: .stApp의 position은 Streamlit 기본(absolute)을 건드리지 않는다 — 바꾸면 높이가 0으로 붕괴 */
 .stApp {
   isolation: isolate;
@@ -610,14 +610,32 @@ html, body, [class*="css"] {
 .stApp::before {
   content: "";
   position: fixed;
-  inset: -12% -8%;
+  inset: -18% -12%;
   z-index: -1;
   pointer-events: none;
+  will-change: transform;
   background:
     radial-gradient(52vw 40vh at 12% -6%,  rgba(110, 159, 255, 0.20), transparent 62%),
     radial-gradient(46vw 36vh at 94% 4%,   rgba(126, 200, 168, 0.16), transparent 58%),
     radial-gradient(40vw 34vh at 78% 88%,  rgba(232, 184, 74, 0.10),  transparent 60%),
     radial-gradient(34vw 30vh at 4% 72%,   rgba(154, 168, 216, 0.12), transparent 55%);
+  animation: rd-aurora-drift 32s ease-in-out infinite alternate;
+}
+/* 코인 탭 — 청록·민트 비중 ↑ */
+html[data-rd-cat="crypto"] .stApp::before {
+  background:
+    radial-gradient(52vw 40vh at 14% -4%,  rgba(110, 159, 255, 0.14), transparent 62%),
+    radial-gradient(48vw 38vh at 92% 6%,   rgba(126, 200, 168, 0.22), transparent 58%),
+    radial-gradient(42vw 34vh at 70% 90%,  rgba(90, 210, 180, 0.12),  transparent 60%),
+    radial-gradient(34vw 30vh at 6% 70%,   rgba(126, 200, 168, 0.10), transparent 55%);
+}
+/* 주식 탭 — 블루·골드 비중 ↑ */
+html[data-rd-cat="stocks"] .stApp::before {
+  background:
+    radial-gradient(52vw 40vh at 10% -6%,  rgba(110, 159, 255, 0.24), transparent 62%),
+    radial-gradient(46vw 36vh at 94% 8%,   rgba(154, 168, 216, 0.16), transparent 58%),
+    radial-gradient(40vw 34vh at 78% 88%,  rgba(232, 184, 74, 0.14),  transparent 60%),
+    radial-gradient(34vw 30vh at 4% 72%,   rgba(90, 120, 200, 0.12),  transparent 55%);
 }
 
 html[data-rd-theme="light"] .stApp::before {
@@ -626,6 +644,38 @@ html[data-rd-theme="light"] .stApp::before {
     radial-gradient(46vw 36vh at 94% 4%,   rgba(31, 138, 100, 0.13), transparent 58%),
     radial-gradient(40vw 34vh at 78% 88%,  rgba(184, 134, 11, 0.08), transparent 60%),
     radial-gradient(34vw 30vh at 4% 72%,   rgba(74, 95, 168, 0.10),  transparent 55%);
+}
+html[data-rd-theme="light"][data-rd-cat="crypto"] .stApp::before {
+  background:
+    radial-gradient(52vw 40vh at 14% -4%,  rgba(59, 111, 216, 0.10), transparent 62%),
+    radial-gradient(48vw 38vh at 92% 6%,   rgba(31, 138, 100, 0.18), transparent 58%),
+    radial-gradient(42vw 34vh at 70% 90%,  rgba(20, 160, 130, 0.10), transparent 60%),
+    radial-gradient(34vw 30vh at 6% 70%,   rgba(31, 138, 100, 0.08), transparent 55%);
+}
+html[data-rd-theme="light"][data-rd-cat="stocks"] .stApp::before {
+  background:
+    radial-gradient(52vw 40vh at 10% -6%,  rgba(59, 111, 216, 0.20), transparent 62%),
+    radial-gradient(46vw 36vh at 94% 8%,   rgba(74, 95, 168, 0.14), transparent 58%),
+    radial-gradient(40vw 34vh at 78% 88%,  rgba(184, 134, 11, 0.12), transparent 60%),
+    radial-gradient(34vw 30vh at 4% 72%,   rgba(59, 111, 216, 0.08), transparent 55%);
+}
+
+@keyframes rd-aurora-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  33%  { transform: translate3d(2.2%, 1.4%, 0) scale(1.04); }
+  66%  { transform: translate3d(-1.6%, 2.0%, 0) scale(1.06); }
+  100% { transform: translate3d(1.2%, -1.0%, 0) scale(1.03); }
+}
+
+/* 캔들·틱 그리드 레이어 (JS canvas) — 오로라 위, 콘텐츠 아래 */
+#rd-market-bg {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.9;
 }
 
 section[data-testid="stSidebar"] {
@@ -1961,6 +2011,19 @@ section.stMain div.stButton > button[data-testid="baseButton-secondary"]:hover {
   margin: 0 0.25rem 0 0;
 }
 
+.rd-legal-link {
+  margin: 0.35rem 0 1.2rem 0;
+  font-size: 0.72rem;
+}
+.rd-legal-link a {
+  color: var(--faint) !important;
+  text-decoration: none !important;
+}
+.rd-legal-link a:hover {
+  color: var(--accent) !important;
+  text-decoration: underline !important;
+}
+
 html[data-rd-theme="light"] .headline-en,
 html[data-rd-theme="light"] .headline-en a {
   color: var(--text) !important;
@@ -2139,7 +2202,11 @@ section[data-testid="stSidebar"] .stButton > button:active {
   .rd-gauge-needle {
     animation: none !important;
   }
-  #rd-spotlight {
+  .stApp::before {
+    animation: none !important;
+  }
+  #rd-spotlight,
+  #rd-market-bg {
     display: none;
   }
 }
@@ -2225,8 +2292,26 @@ def _default_settings() -> dict[str, Any]:
     }
 
 
+def personal_mode() -> bool:
+    """개인 단말 모드.
+
+    서버의 settings 파일은 방문자 전원이 공유하므로, 공개 배포에서 켜면
+    한 사람의 저장이 모든 방문자의 초기값을 바꿔 버린다. 그래서 기본은 OFF이고,
+    혼자 쓰는 로컬 실행에서만 Secrets/환경변수 RD_PERSONAL_MODE=1 로 켠다.
+    공개 배포에서는 설정이 세션 단위로만 유지되고, 영구 보관은 Export/Import를 쓴다.
+    """
+    return _load_config_str("RD_PERSONAL_MODE").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
 def load_settings_file() -> dict[str, Any]:
     defaults = _default_settings()
+    if not personal_mode():
+        return defaults
     if not SETTINGS_PATH.exists():
         return defaults
     try:
@@ -2245,12 +2330,16 @@ def load_settings_file() -> dict[str, Any]:
         return defaults
 
 
-def save_settings_file(settings: dict[str, Any]) -> None:
+def save_settings_file(settings: dict[str, Any]) -> bool:
+    """개인 모드에서만 서버 파일에 저장. 저장했으면 True."""
+    if not personal_mode():
+        return False
     SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
     SETTINGS_PATH.write_text(
         json.dumps(settings, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+    return True
 
 
 def _ensure_source_keys(settings: dict[str, Any]) -> dict[str, Any]:
@@ -2383,11 +2472,12 @@ def _translate_soft_consume(n: int) -> None:
 
 
 def _status_product_label() -> str:
+    # Pro가 실제로 제공하는 것은 광고 제거뿐이다. 아직 없는 기능을 약속하지 않는다.
     if billing.pro_billing_enabled() and auth_quota.is_pro():
-        return f"Pro · 광고 없음 · 시그널 우선 ({billing.PRO_PRICE_LABEL})"
+        return f"Pro · 광고 없음 ({billing.PRO_PRICE_LABEL})"
     if billing.pro_billing_enabled():
         return (
-            f"검증 매체 속보 무료 · Pro는 광고 제거 + 시그널 우선 "
+            f"검증 매체 속보 무료 · Pro는 광고 제거 "
             f"({billing.PRO_PRICE_LABEL})"
         )
     return "검증 매체 속보 · 영어는 원문에서 브라우저 번역"
@@ -4562,17 +4652,18 @@ def inject_css() -> None:
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
     theme = _sync_ui_theme_to_settings()
     theme_attr = "light" if theme == "라이트" else "dark"
-    # 부모 document 테마·notranslate — 한 iframe에서만, 중복 주입 최소화
+    # 부모 document 테마·notranslate·시장 배경 — 한 iframe에서만, 중복 주입 최소화
     components.html(
         f"""
         <script>
         (function () {{
           try {{
             const doc = window.parent.document;
+            const win = window.parent;
             const root = doc.documentElement;
             if (root.getAttribute('data-rd-theme') !== '{theme_attr}') {{
               root.setAttribute('data-rd-theme', '{theme_attr}');
-              try {{ window.parent.localStorage.setItem('rd_ui_theme', '{theme_attr}'); }} catch (e) {{}}
+              try {{ win.localStorage.setItem('rd_ui_theme', '{theme_attr}'); }} catch (e) {{}}
             }}
             if (root.dataset.rdNoTranslate !== '1') {{
               root.dataset.rdNoTranslate = '1';
@@ -4604,13 +4695,211 @@ def inject_css() -> None:
                 my = e.clientY;
                 if (!pending) {{
                   pending = true;
-                  window.parent.requestAnimationFrame(function () {{
+                  win.requestAnimationFrame(function () {{
                     sp.style.setProperty('--rd-mx', mx + 'px');
                     sp.style.setProperty('--rd-my', my + 'px');
                     pending = false;
                   }});
                 }}
               }}, {{ passive: true }});
+            }}
+
+            // 캔들·틱 그리드 배경 — 캔버스 없으면 재생성, RAF는 1개만
+            (function initMarketBg() {{
+              const reduce = win.matchMedia && win.matchMedia('(prefers-reduced-motion: reduce)').matches;
+              if (reduce) return;
+              const app = doc.querySelector('.stApp') || doc.body;
+              let cv = doc.getElementById('rd-market-bg');
+              if (!cv) {{
+                cv = doc.createElement('canvas');
+                cv.id = 'rd-market-bg';
+                cv.setAttribute('aria-hidden', 'true');
+                app.insertBefore(cv, app.firstChild);
+                // DOM이 새로 생기면 루프도 다시 붙여야 함
+                win.__rdMarketBgRunning = false;
+              }}
+              if (win.__rdMarketBgRunning) return;
+              win.__rdMarketBgRunning = true;
+              const ctx = cv.getContext('2d');
+              if (!ctx) return;
+              let W = 0, H = 0, dpr = 1;
+              let candles = [];
+              let ticks = [];
+              let last = 0;
+              const isMobile = () => (win.innerWidth || 800) < 720;
+
+              function themeLight() {{
+                return root.getAttribute('data-rd-theme') === 'light';
+              }}
+              function catStocks() {{
+                return root.getAttribute('data-rd-cat') === 'stocks';
+              }}
+              function alphaMul() {{
+                return themeLight() ? 0.72 : 1;
+              }}
+              function resize() {{
+                dpr = Math.min(win.devicePixelRatio || 1, 2);
+                W = win.innerWidth || 1200;
+                H = win.innerHeight || 800;
+                cv.width = Math.floor(W * dpr);
+                cv.height = Math.floor(H * dpr);
+                cv.style.width = W + 'px';
+                cv.style.height = H + 'px';
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                seed();
+              }}
+              function rand(a, b) {{ return a + Math.random() * (b - a); }}
+              function mkCandle(x) {{
+                const mid = H * rand(0.28, 0.72);
+                const body = rand(8, 34);
+                const up = Math.random() > 0.48;
+                const open = mid;
+                const close = up ? mid - body : mid + body;
+                const wick = rand(6, 22);
+                return {{
+                  x: x,
+                  open: open,
+                  close: close,
+                  high: Math.min(open, close) - wick,
+                  low: Math.max(open, close) + wick,
+                  w: rand(5, 9),
+                }};
+              }}
+              function seed() {{
+                const gap = isMobile() ? 28 : 22;
+                const n = Math.ceil(W / gap) + 4;
+                candles = [];
+                for (let i = 0; i < n; i++) candles.push(mkCandle(i * gap + 8));
+                ticks = [];
+                let y = H * 0.55;
+                for (let i = 0; i < n + 8; i++) {{
+                  y += rand(-18, 18);
+                  y = Math.max(H * 0.18, Math.min(H * 0.82, y));
+                  ticks.push(y);
+                }}
+              }}
+              function drawGrid() {{
+                const light = themeLight();
+                const a = (light ? 0.045 : 0.055) * alphaMul();
+                ctx.strokeStyle = light
+                  ? 'rgba(40, 55, 90,' + a + ')'
+                  : 'rgba(180, 200, 240,' + a + ')';
+                ctx.lineWidth = 1;
+                const step = isMobile() ? 56 : 48;
+                ctx.beginPath();
+                for (let x = 0; x <= W; x += step) {{
+                  ctx.moveTo(x + 0.5, 0);
+                  ctx.lineTo(x + 0.5, H);
+                }}
+                for (let y = 0; y <= H; y += step) {{
+                  ctx.moveTo(0, y + 0.5);
+                  ctx.lineTo(W, y + 0.5);
+                }}
+                ctx.stroke();
+              }}
+              function drawCandles() {{
+                const light = themeLight();
+                const stocks = catStocks();
+                const up = stocks
+                  ? (light ? 'rgba(59,111,216,' : 'rgba(110,159,255,')
+                  : (light ? 'rgba(31,138,100,' : 'rgba(126,200,168,');
+                const dn = light
+                  ? 'rgba(190,70,70,'
+                  : 'rgba(220,110,110,';
+                const bodyA = (light ? 0.14 : 0.18) * alphaMul();
+                const wickA = (light ? 0.10 : 0.13) * alphaMul();
+                for (let i = 0; i < candles.length; i++) {{
+                  const c = candles[i];
+                  const isUp = c.close < c.open;
+                  const col = isUp ? up : dn;
+                  const cx = c.x + c.w / 2;
+                  ctx.strokeStyle = col + wickA + ')';
+                  ctx.beginPath();
+                  ctx.moveTo(cx, c.high);
+                  ctx.lineTo(cx, c.low);
+                  ctx.stroke();
+                  const top = Math.min(c.open, c.close);
+                  const h = Math.max(2, Math.abs(c.close - c.open));
+                  ctx.fillStyle = col + bodyA + ')';
+                  ctx.fillRect(c.x, top, c.w, h);
+                }}
+              }}
+              function drawTickLine() {{
+                if (ticks.length < 2) return;
+                const light = themeLight();
+                const stocks = catStocks();
+                const a = (light ? 0.16 : 0.20) * alphaMul();
+                const col = stocks
+                  ? (light ? 'rgba(74,95,168,' : 'rgba(154,168,216,')
+                  : (light ? 'rgba(31,138,100,' : 'rgba(126,200,168,');
+                const gap = isMobile() ? 28 : 22;
+                ctx.beginPath();
+                ctx.strokeStyle = col + a + ')';
+                ctx.lineWidth = 1.25;
+                for (let i = 0; i < ticks.length; i++) {{
+                  const x = i * gap - gap;
+                  if (i === 0) ctx.moveTo(x, ticks[i]);
+                  else ctx.lineTo(x, ticks[i]);
+                }}
+                ctx.stroke();
+              }}
+              function step(ts) {{
+                if (!doc.getElementById('rd-market-bg')) {{
+                  win.__rdMarketBgRunning = false;
+                  return;
+                }}
+                if (!last) last = ts;
+                const dt = Math.min(40, ts - last);
+                last = ts;
+                const speed = (isMobile() ? 0.018 : 0.028) * dt;
+                const gap = isMobile() ? 28 : 22;
+                for (let i = 0; i < candles.length; i++) candles[i].x -= speed;
+                while (candles.length && candles[0].x + candles[0].w < -20) {{
+                  candles.shift();
+                  const lastC = candles[candles.length - 1];
+                  candles.push(mkCandle((lastC ? lastC.x : 0) + gap));
+                  let ny = ticks[ticks.length - 1] + rand(-16, 16);
+                  ny = Math.max(H * 0.18, Math.min(H * 0.82, ny));
+                  ticks.push(ny);
+                  if (ticks.length > candles.length + 10) ticks.shift();
+                }}
+                ctx.clearRect(0, 0, W, H);
+                drawGrid();
+                drawCandles();
+                drawTickLine();
+                win.__rdMarketBgRaf = win.requestAnimationFrame(step);
+              }}
+              resize();
+              if (!win.__rdMarketBgResizeBound) {{
+                win.__rdMarketBgResizeBound = true;
+                win.addEventListener('resize', function () {{
+                  if (typeof win.__rdMarketBgResize === 'function') win.__rdMarketBgResize();
+                }}, {{ passive: true }});
+              }}
+              win.__rdMarketBgResize = resize;
+              if (win.__rdMarketBgRaf) win.cancelAnimationFrame(win.__rdMarketBgRaf);
+              win.__rdMarketBgRaf = win.requestAnimationFrame(step);
+            }})();
+          }} catch (e) {{}}
+        }})();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
+def _sync_market_bg_category(category: Category) -> None:
+    """코인/주식 탭에 맞춰 오로라·캔들 톤 속성만 갱신."""
+    cat = "stocks" if category == "stocks" else "crypto"
+    components.html(
+        f"""
+        <script>
+        (function () {{
+          try {{
+            const root = window.parent.document.documentElement;
+            if (root.getAttribute('data-rd-cat') !== '{cat}') {{
+              root.setAttribute('data-rd-cat', '{cat}');
             }}
           }} catch (e) {{}}
         }})();
@@ -5488,10 +5777,7 @@ def _render_billing_sidebar(user: dict[str, Any]) -> None:
     if not billing.pro_billing_enabled():
         return
     if st.session_state.pop("billing_just_activated", None):
-        st.success(
-            "Pro가 활성화되었습니다. 광고가 제거되며, "
-            "시그널 속보를 우선 제공합니다."
-        )
+        st.success("Pro가 활성화되었습니다. 광고가 제거됩니다.")
 
     if not billing.toss_configured():
         st.caption(
@@ -5502,7 +5788,7 @@ def _render_billing_sidebar(user: dict[str, Any]) -> None:
 
     if auth_quota.is_pro(user):
         st.caption(
-            f"Pro 구독 중 · 광고 없음 · 시그널 우선 ({billing.PRO_PRICE_LABEL})"
+            f"Pro 구독 중 · 광고 없음 ({billing.PRO_PRICE_LABEL})"
         )
         billed = billing.get_profile_billing(user["id"])
         next_at = billed.get("next_billing_at")
@@ -5520,7 +5806,7 @@ def _render_billing_sidebar(user: dict[str, Any]) -> None:
     else:
         st.caption("무료 · 매체 RSS · 홈 광고")
         st.caption(
-            "Pro · 광고 제거 + 출시 예정 시그널 우선 · "
+            "Pro · 광고 제거 · "
             f"카드 등록 시 {billing.PRO_AMOUNT:,}원 결제"
         )
         ck = billing.customer_key_for_user(user["id"])
@@ -5569,8 +5855,7 @@ def _render_auth_sidebar() -> None:
                 type="primary",
             )
             st.caption(
-                f"로그인 후 Pro({billing.PRO_PRICE_LABEL}) · "
-                "광고 제거 + 시그널 우선"
+                f"로그인 후 Pro({billing.PRO_PRICE_LABEL}) · 광고 제거"
             )
         else:
             st.warning("로그인 URL을 만들지 못했습니다. Secrets·Supabase 설정을 확인하세요.")
@@ -5843,15 +6128,25 @@ def render_sidebar() -> tuple[DisplayMode, dict[str, Any]]:
                     }
                 st.session_state.settings = merged
                 st.session_state.last_import_id = file_id
-                save_settings_file(merged)
-                st.success("설정을 Import 하고 저장했습니다.")
+                saved = save_settings_file(merged)
+                st.success(
+                    "설정을 Import 하고 저장했습니다."
+                    if saved
+                    else "설정을 불러왔습니다."
+                )
                 st.rerun()
             except Exception as exc:
                 st.error(f"Import 실패: {exc}")
 
-    if st.button("설정 저장 (로컬 파일)", use_container_width=True):
-        save_settings_file(settings)
-        st.success("저장됨 → data/user_settings.json")
+    if personal_mode():
+        if st.button("설정 저장 (로컬 파일)", use_container_width=True):
+            save_settings_file(settings)
+            st.success("저장됨 → data/user_settings.json")
+    else:
+        st.caption(
+            "설정은 이 브라우저 세션에서만 유지됩니다. "
+            "오래 보관하려면 Export로 내려받아 두었다가 Import 하세요."
+        )
 
     st.markdown(
         '<div class="sidebar-hint">자동 새로고침 30초 · RSS 공개 피드</div>',
@@ -6153,6 +6448,92 @@ def render_title_with_hamburger(settings: dict[str, Any]) -> dict[str, Any]:
     return settings
 
 
+# ---------------------------------------------------------------------------
+# 약관 · 개인정보처리방침
+# ---------------------------------------------------------------------------
+
+# TODO(운영자): 서비스를 정식 공개하기 전에 아래 3개를 실제 값으로 바꾸세요.
+LEGAL_OPERATOR = "라디오 데스크 (개인 운영)"
+LEGAL_CONTACT = "kisstherain3310@gmail.com"
+LEGAL_UPDATED = "2026-07-31"
+
+
+def _legal_href() -> str:
+    return "?view=legal"
+
+
+def render_legal_page() -> None:
+    """개인정보처리방침 + 이용약관 (한 페이지)."""
+    st.markdown(
+        '<div class="reader-kicker">라디오 데스크 · 약관</div>',
+        unsafe_allow_html=True,
+    )
+    if st.button("목록으로", key="legal_back"):
+        st.query_params.clear()
+        st.rerun()
+
+    st.markdown(
+        f"""
+### 개인정보처리방침
+
+**시행일 {LEGAL_UPDATED} · 운영자 {LEGAL_OPERATOR} · 문의 {LEGAL_CONTACT}**
+
+라디오 데스크(이하 "서비스")는 회원가입 없이 이용할 수 있으며, 이용자를 식별하기 위한
+정보를 직접 수집하지 않습니다. 다만 아래 항목이 처리될 수 있습니다.
+
+| 항목 | 목적 | 보관 | 주체 |
+|---|---|---|---|
+| 방문·이용 기록 (페이지뷰, 기기·브라우저 정보) | 서비스 개선 통계 | Google 정책에 따름 | Google Analytics 4 |
+| 브라우저 알림 토큰 | 속보 알림 발송 | 알림 차단 시 즉시 파기 | Firebase Cloud Messaging |
+| 이메일, 로그인 식별자 | 로그인·구독 관리 | 회원 탈퇴 시 파기 | Supabase |
+| 결제 수단 정보 | 유료 구독 결제 | 서비스는 저장하지 않음 | 토스페이먼츠 |
+
+- 화면 설정(테마, 정렬, 워치리스트 등)은 이용자의 브라우저 세션에만 남고 서버에 저장되지
+  않습니다.
+- 광고 영역은 쿠팡 파트너스로 제공되며, 쿠팡 및 제휴사가 자체 정책에 따라 쿠키를 사용할 수
+  있습니다. 서비스는 이 포스팅 활동으로 일정액의 수수료를 제공받습니다.
+- 이용자는 브라우저 설정에서 쿠키·알림을 차단할 수 있으며, 로그인 이용자는
+  {LEGAL_CONTACT} 으로 열람·삭제를 요청할 수 있습니다.
+- 만 14세 미만 아동을 대상으로 하지 않습니다.
+
+---
+
+### 이용약관
+
+**시행일 {LEGAL_UPDATED}**
+
+**제1조 (서비스의 성격)**
+서비스는 공개된 언론사 RSS의 **제목과 원문 링크만** 모아 보여 주는 뉴스 안내 도구입니다.
+기사 본문을 복제·저장하지 않으며, 각 기사의 저작권은 해당 언론사에 있습니다. 전문은 반드시
+원문 링크를 통해 확인해 주세요.
+
+**제2조 (투자 판단 책임)**
+서비스가 제공하는 시세, Fear & Greed, VIX, RSI, HOT 표시는 **투자 자문이 아니며**
+참고용 추정치입니다. 외부 제공처의 데이터를 그대로 또는 가공하여 표시하므로 지연·오류가
+있을 수 있습니다. 이를 근거로 한 투자 판단과 그 결과는 이용자 본인에게 있으며, 운영자는
+법령이 허용하는 범위에서 책임을 지지 않습니다.
+
+**제3조 (유료 구독)**
+Pro 구독은 **광고 제거**를 제공합니다. 결제·해지는 서비스 내 결제 화면에서 처리되며,
+결제 대행은 토스페이먼츠가 담당합니다. 환불은 관련 법령과 결제 대행사 정책을 따릅니다.
+
+**제4조 (서비스 변경·중단)**
+운영자는 외부 데이터 제공처의 정책 변경, 장애, 그 밖의 사유로 서비스의 전부 또는 일부를
+변경하거나 중단할 수 있습니다.
+
+**제5조 (금지 행위)**
+자동화된 방법으로 서비스에 과도한 부하를 유발하거나, 수집 결과를 무단으로 재배포하는 행위를
+금지합니다.
+
+---
+
+<small>본 문서는 서비스의 실제 동작을 설명한 초안입니다. 사업자 등록·유료 결제를 본격적으로
+운영하실 경우 전자상거래법·개인정보보호법에 맞춰 전문가 검토를 받으시길 권합니다.</small>
+""",
+        unsafe_allow_html=True,
+    )
+
+
 def main() -> None:
     st.set_page_config(
         page_title="라디오 데스크 · Market News Terminal",
@@ -6177,8 +6558,17 @@ def main() -> None:
         st.query_params.clear()
         st.rerun()
 
-    # ---- 읽기 페이지 프로토타입 (?view=read&id=...) ----
     view = str(st.query_params.get("view", "") or "")
+
+    # ---- 약관 · 개인정보처리방침 (?view=legal) ----
+    if view == "legal":
+        with st.sidebar:
+            _render_auth_sidebar()
+        render_title_with_hamburger(st.session_state.settings)
+        render_legal_page()
+        return
+
+    # ---- 읽기 페이지 프로토타입 (?view=read&id=...) ----
     if view == "read":
         raw_id = st.query_params.get("id", "")
         article_id = unquote(str(raw_id or ""))
@@ -6304,6 +6694,7 @@ def main() -> None:
     active_cat: Category = (
         "stocks" if st.session_state.get(tab_key) == "stocks" else "crypto"
     )
+    _sync_market_bg_category(active_cat)
     if active_cat == "stocks":
         active_rows = stock_rows
         active_sources = active_stocks
@@ -6336,6 +6727,17 @@ def main() -> None:
     _render_signals_teaser()
     _render_home_ad("home-top", "Home")
     st.caption(t("footer"))
+    legal_label = (
+        "개인정보처리방침 · 이용약관"
+        if _ui_lang() == "ko"
+        else "Privacy Policy · Terms"
+    )
+    st.markdown(
+        f'<div class="rd-legal-link">'
+        f'<a href="{_legal_href()}">{html.escape(legal_label)}</a>'
+        f"</div>",
+        unsafe_allow_html=True,
+    )
 
 
 if __name__ == "__main__":
